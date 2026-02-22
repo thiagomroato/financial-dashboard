@@ -31,7 +31,6 @@
             color: #333;
         }
 
-        /* ========== AUTH SCREEN ========== */
         .auth-screen {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -76,12 +75,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .auth-form h3 {
@@ -90,8 +85,7 @@
             margin-bottom: 20px;
         }
 
-        .auth-form .form-control,
-        .auth-form .form-select {
+        .auth-form .form-control {
             border-radius: 10px;
             border: 2px solid #e9ecef;
             padding: 12px 15px;
@@ -99,8 +93,7 @@
             transition: all 0.2s ease;
         }
 
-        .auth-form .form-control:focus,
-        .auth-form .form-select:focus {
+        .auth-form .form-control:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
@@ -130,10 +123,6 @@
             color: white;
         }
 
-        .auth-form .btn-primary:active {
-            color: white;
-        }
-
         .auth-alert {
             margin-top: 15px;
             border-radius: 10px;
@@ -151,7 +140,6 @@
             }
         }
 
-        /* ========== APP SCREEN ========== */
         .app-screen {
             background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -197,8 +185,7 @@
             gap: 10px;
         }
 
-        .btn-settings {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .btn-settings, .btn-logout {
             color: white;
             border: none;
             padding: 12px 24px;
@@ -206,6 +193,10 @@
             font-weight: 600;
             transition: all 0.3s ease;
             cursor: pointer;
+        }
+
+        .btn-settings {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .btn-settings:hover {
@@ -216,13 +207,6 @@
 
         .btn-logout {
             background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            cursor: pointer;
         }
 
         .btn-logout:hover {
@@ -352,10 +336,6 @@
             margin-bottom: 20px;
             font-weight: 700;
             color: #333;
-        }
-
-        .chart-card canvas {
-            max-height: 300px;
         }
 
         .transactions-section {
@@ -522,7 +502,6 @@
                 <h1><i class="fas fa-chart-line"></i> Dashboard Financeiro 2030</h1>
                 <p>Controle compartilhado de finanças em tempo real</p>
 
-                <!-- Login Form -->
                 <div class="auth-form">
                     <h3>Login</h3>
                     <div class="mb-3">
@@ -547,7 +526,6 @@
     <!-- App Screen -->
     <div id="appScreen" class="app-screen" style="display:none;">
         <div class="container-fluid">
-            <!-- Header -->
             <header class="header">
                 <div class="header-content">
                     <h1><i class="fas fa-chart-line"></i> Dashboard Financeiro 2030</h1>
@@ -563,7 +541,6 @@
                 </div>
             </header>
 
-            <!-- KPIs Section -->
             <section class="kpis-section">
                 <div class="row g-4">
                     <div class="col-md-6 col-lg-3">
@@ -613,7 +590,6 @@
                 </div>
             </section>
 
-            <!-- Action Buttons -->
             <section class="actions-section">
                 <button class="btn btn-action btn-receita" data-bs-toggle="modal" data-bs-target="#receitaModal">
                     <i class="fas fa-plus"></i> Adicionar Receita
@@ -626,7 +602,6 @@
                 </button>
             </section>
 
-            <!-- Charts Section -->
             <section class="charts-section">
                 <div class="row g-4">
                     <div class="col-lg-6">
@@ -658,7 +633,6 @@
                 </div>
             </section>
 
-            <!-- Transactions Table -->
             <section class="transactions-section">
                 <div class="transactions-header">
                     <h5><i class="fas fa-history"></i> Histórico de Transações</h5>
@@ -843,24 +817,23 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK - CARREGA PRIMEIRO! -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
 
     <!-- Bootstrap e Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-        console.log('🚀 Dashboard iniciando...');
 
-        // ========== CREDENCIAIS FIXAS ==========
+    <!-- APP SCRIPT -->
+    <script>
+        console.log('🚀 Iniciando Dashboard...');
+
+        // ========== CREDENCIAIS ==========
         const USUARIO_PADRAO = "MoratoFamily";
         const SENHA_PADRAO = "LuccaMatteo";
 
-        console.log('✅ Credenciais configuradas');
-
-        // ========== FIREBASE INIT ==========
+        // ========== FIREBASE ==========
         const firebaseConfig = {
             apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
             authDomain: "financial-dashboard-a2b16.firebaseapp.com",
@@ -871,15 +844,12 @@
             measurementId: "G-6JXMBQH9G1"
         };
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            const db = firebase.firestore();
-            console.log('✅ Firebase inicializado');
-        } catch (error) {
-            console.error('❌ Erro Firebase:', error);
-        }
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        console.log('✅ Firebase inicializado');
 
-        // ========== VARIÁVEIS GLOBAIS ==========
+        // ========== VARIÁVEIS ==========
         let isLogado = false;
         let configuracoes = {
             usdRate: 5.00,
@@ -889,73 +859,10 @@
         let transacoes = [];
         let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
 
-        // ========== AGUARDAR DOM ==========
-        function inicializarEventos() {
-            console.log('🔌 Inicializando event listeners...');
-
-            // LOGIN
-            const btnLogin = document.getElementById('btnLogin');
-            if (btnLogin) {
-                console.log('✅ Botão Login encontrado');
-                btnLogin.addEventListener('click', fazerLogin);
-                
-                // Permitir Enter para logar
-                document.getElementById('loginPassword').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        fazerLogin();
-                    }
-                });
-            } else {
-                console.error('❌ Botão Login NÃO encontrado!');
-            }
-
-            // LOGOUT
-            const btnLogout = document.getElementById('btnLogout');
-            if (btnLogout) {
-                console.log('✅ Botão Logout encontrado');
-                btnLogout.addEventListener('click', fazerLogout);
-            }
-
-            // ADICIONAR RECEITA
-            const btnAdicionarReceita = document.getElementById('btnAdicionarReceita');
-            if (btnAdicionarReceita) {
-                console.log('✅ Botão Adicionar Receita encontrado');
-                btnAdicionarReceita.addEventListener('click', adicionarReceita);
-            }
-
-            // ADICIONAR DESPESA
-            const btnAdicionarDespesa = document.getElementById('btnAdicionarDespesa');
-            if (btnAdicionarDespesa) {
-                console.log('✅ Botão Adicionar Despesa encontrado');
-                btnAdicionarDespesa.addEventListener('click', adicionarDespesa);
-            }
-
-            // ADICIONAR INVESTIMENTO
-            const btnAdicionarInvestimento = document.getElementById('btnAdicionarInvestimento');
-            if (btnAdicionarInvestimento) {
-                console.log('✅ Botão Adicionar Investimento encontrado');
-                btnAdicionarInvestimento.addEventListener('click', adicionarInvestimento);
-            }
-
-            // SALVAR CONFIG
-            const btnSalvarConfig = document.getElementById('btnSalvarConfig');
-            if (btnSalvarConfig) {
-                console.log('✅ Botão Salvar Config encontrado');
-                btnSalvarConfig.addEventListener('click', salvarConfigurações);
-            }
-
-            console.log('✅ Todos os event listeners configurados!');
-        }
-
-        // ========== FUNÇÕES DE AUTH ==========
-        function fazerLogin() {
-            console.log('🔑 Botão Login clicado!');
-            
+        // ========== LOGIN ==========
+        document.getElementById('btnLogin').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value.trim();
             const senha = document.getElementById('loginPassword').value.trim();
-
-            console.log('📝 Email:', email);
-            console.log('📝 Senha:', senha);
 
             if (!email || !senha) {
                 mostrarErroAuth('Preencha todos os campos!');
@@ -963,11 +870,9 @@
             }
 
             if (email === USUARIO_PADRAO && senha === SENHA_PADRAO) {
-                console.log('✅ Credenciais corretas!');
                 isLogado = true;
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'block';
-                
                 document.getElementById('loginEmail').value = '';
                 document.getElementById('loginPassword').value = '';
                 
@@ -975,24 +880,21 @@
                 inicializarDatas();
                 atualizar();
             } else {
-                console.log('❌ Credenciais INCORRETAS!');
-                console.log('   Esperado:', USUARIO_PADRAO, '/', SENHA_PADRAO);
-                console.log('   Recebido:', email, '/', senha);
                 mostrarErroAuth('Email ou senha incorretos!');
             }
-        }
+        });
 
-        function fazerLogout() {
-            console.log('🚪 Logout clicado!');
+        // ========== LOGOUT ==========
+        document.getElementById('btnLogout').addEventListener('click', () => {
             isLogado = false;
             document.getElementById('authScreen').style.display = 'block';
             document.getElementById('appScreen').style.display = 'none';
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
-        }
+        });
 
+        // ========== ERRO AUTH ==========
         function mostrarErroAuth(mensagem) {
-            console.log('⚠️ Erro:', mensagem);
             const errorDiv = document.getElementById('authError');
             errorDiv.textContent = mensagem;
             errorDiv.style.display = 'block';
@@ -1001,34 +903,25 @@
             }, 5000);
         }
 
-        // ========== CARREGAR DADOS ==========
+        // ========== CARREGAR FIREBASE ==========
         async function carregarDadosDoFirebase() {
             try {
-                console.log('📥 Carregando dados do Firebase...');
-                
-                const db = firebase.firestore();
-
-                // Carregar configurações
                 const configDoc = await db.collection('configuracoes').doc('geral').get();
                 if (configDoc.exists) {
                     const data = configDoc.data();
                     configuracoes.usdRate = data.usdRate || 5.00;
                     configuracoes.monthlyRate = data.monthlyRate || 1.00;
                     configuracoes.targetGoal = data.targetGoal || 112000;
-                    console.log('✅ Configurações carregadas');
-                } else {
-                    console.log('ℹ️ Nenhuma configuração salva ainda');
                 }
 
                 document.getElementById('usdRate').value = configuracoes.usdRate;
                 document.getElementById('monthlyRate').value = configuracoes.monthlyRate;
                 document.getElementById('targetGoal').value = configuracoes.targetGoal;
 
-                // Carregar transações em tempo real
+                // Sincronizar transações em tempo real
                 db.collection('transacoes')
                     .orderBy('data', 'desc')
                     .onSnapshot((snapshot) => {
-                        console.log('📊 Atualizando transações...');
                         transacoes = [];
                         snapshot.forEach((doc) => {
                             transacoes.push({
@@ -1036,18 +929,15 @@
                                 ...doc.data()
                             });
                         });
-                        console.log(`✅ ${transacoes.length} transações carregadas`);
                         atualizar();
-                    }, (error) => {
-                        console.error('❌ Erro ao carregar transações:', error);
                     });
             } catch (error) {
-                console.error('❌ Erro ao carregar dados:', error);
+                console.error('Erro ao carregar:', error);
             }
         }
 
-        // ========== ADICIONAR TRANSAÇÕES ==========
-        async function adicionarReceita() {
+        // ========== ADICIONAR RECEITA ==========
+        document.getElementById('btnAdicionarReceita').addEventListener('click', async () => {
             const data = document.getElementById('receitaData').value;
             const categoria = document.getElementById('receitaCategoria').value;
             const descricao = document.getElementById('receitaDescricao').value;
@@ -1059,32 +949,23 @@
             }
 
             try {
-                const db = firebase.firestore();
                 await db.collection('transacoes').add({
-                    data: data,
-                    tipo: 'receita',
-                    categoria: categoria,
-                    descricao: descricao,
-                    valor: valor,
-                    moeda: 'BRL',
-                    dataCriacao: new Date(),
-                    dataAtualizacao: new Date()
+                    data, tipo: 'receita', categoria, descricao, valor,
+                    moeda: 'BRL', dataCriacao: new Date(), dataAtualizacao: new Date()
                 });
 
-                const modal = bootstrap.Modal.getInstance(document.getElementById('receitaModal'));
-                modal.hide();
-
+                bootstrap.Modal.getInstance(document.getElementById('receitaModal')).hide();
                 document.getElementById('receitaData').value = '';
                 document.getElementById('receitaDescricao').value = '';
                 document.getElementById('receitaValor').value = '';
-                
-                alert('Receita adicionada com sucesso!');
+                alert('Receita adicionada!');
             } catch (error) {
-                alert('Erro ao adicionar receita: ' + error.message);
+                alert('Erro: ' + error.message);
             }
-        }
+        });
 
-        async function adicionarDespesa() {
+        // ========== ADICIONAR DESPESA ==========
+        document.getElementById('btnAdicionarDespesa').addEventListener('click', async () => {
             const data = document.getElementById('despesaData').value;
             const categoria = document.getElementById('despesaCategoria').value;
             const descricao = document.getElementById('despesaDescricao').value;
@@ -1096,32 +977,23 @@
             }
 
             try {
-                const db = firebase.firestore();
                 await db.collection('transacoes').add({
-                    data: data,
-                    tipo: 'despesa',
-                    categoria: categoria,
-                    descricao: descricao,
-                    valor: valor,
-                    moeda: 'BRL',
-                    dataCriacao: new Date(),
-                    dataAtualizacao: new Date()
+                    data, tipo: 'despesa', categoria, descricao, valor,
+                    moeda: 'BRL', dataCriacao: new Date(), dataAtualizacao: new Date()
                 });
 
-                const modal = bootstrap.Modal.getInstance(document.getElementById('despesaModal'));
-                modal.hide();
-
+                bootstrap.Modal.getInstance(document.getElementById('despesaModal')).hide();
                 document.getElementById('despesaData').value = '';
                 document.getElementById('despesaDescricao').value = '';
                 document.getElementById('despesaValor').value = '';
-                
-                alert('Despesa adicionada com sucesso!');
+                alert('Despesa adicionada!');
             } catch (error) {
-                alert('Erro ao adicionar despesa: ' + error.message);
+                alert('Erro: ' + error.message);
             }
-        }
+        });
 
-        async function adicionarInvestimento() {
+        // ========== ADICIONAR INVESTIMENTO ==========
+        document.getElementById('btnAdicionarInvestimento').addEventListener('click', async () => {
             const data = document.getElementById('investimentoData').value;
             const tipo = document.getElementById('investimentoTipo').value;
             const moeda = document.getElementById('investimentoMoeda').value;
@@ -1133,37 +1005,27 @@
             }
 
             try {
-                const db = firebase.firestore();
                 await db.collection('transacoes').add({
-                    data: data,
-                    tipo: 'investimento',
-                    categoria: tipo,
-                    descricao: tipo,
-                    valor: valor,
-                    moeda: moeda,
-                    dataCriacao: new Date(),
-                    dataAtualizacao: new Date()
+                    data, tipo: 'investimento', categoria: tipo, descricao: tipo, valor, moeda,
+                    dataCriacao: new Date(), dataAtualizacao: new Date()
                 });
 
-                const modal = bootstrap.Modal.getInstance(document.getElementById('investimentoModal'));
-                modal.hide();
-
+                bootstrap.Modal.getInstance(document.getElementById('investimentoModal')).hide();
                 document.getElementById('investimentoData').value = '';
                 document.getElementById('investimentoValor').value = '';
-                
-                alert('Investimento adicionado com sucesso!');
+                alert('Investimento adicionado!');
             } catch (error) {
-                alert('Erro ao adicionar investimento: ' + error.message);
+                alert('Erro: ' + error.message);
             }
-        }
+        });
 
+        // ========== DELETAR ==========
         function deletarTransacao(id) {
-            if (confirm('Tem certeza que deseja deletar esta transação?')) {
-                const db = firebase.firestore();
+            if (confirm('Deletar transação?')) {
                 db.collection('transacoes').doc(id).delete().then(() => {
-                    alert('Transação deletada com sucesso!');
-                }).catch((error) => {
-                    alert('Erro ao deletar: ' + error.message);
+                    alert('Deletado!');
+                }).catch((err) => {
+                    alert('Erro: ' + err.message);
                 });
             }
         }
@@ -1173,14 +1035,9 @@
             let patrimonio = 0;
             transacoes.forEach(t => {
                 let valor = t.valor;
-                if (t.moeda === 'USD') {
-                    valor = valor * configuracoes.usdRate;
-                }
-                if (t.tipo === 'receita' || t.tipo === 'investimento') {
-                    patrimonio += valor;
-                } else if (t.tipo === 'despesa') {
-                    patrimonio -= valor;
-                }
+                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
+                if (t.tipo === 'receita' || t.tipo === 'investimento') patrimonio += valor;
+                else if (t.tipo === 'despesa') patrimonio -= valor;
             });
             return patrimonio;
         }
@@ -1205,17 +1062,14 @@
         }
 
         function formatarMoeda(valor) {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            }).format(valor);
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         }
 
         function formatarData(data) {
             return new Intl.DateTimeFormat('pt-BR').format(new Date(data));
         }
 
-        // ========== ATUALIZAR UI ==========
+        // ========== ATUALIZAR KPIs ==========
         function atualizarKPIs() {
             const patrimonio = calcularPatrimonio();
             const receitas = calcularReceitasMes();
@@ -1227,23 +1081,19 @@
             document.getElementById('metaGoal').textContent = formatarMoeda(configuracoes.targetGoal);
         }
 
+        // ========== ATUALIZAR TABELA ==========
         function atualizarTabela() {
             const tbody = document.getElementById('transactionsTable');
             tbody.innerHTML = '';
 
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação registrada</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação</td></tr>';
                 return;
             }
 
             transacoes.forEach(t => {
                 let valor = t.valor;
-                let moedaDisplay = 'R$';
-
-                if (t.moeda === 'USD') {
-                    moedaDisplay = 'US$';
-                }
-
+                let moedaDisplay = t.moeda === 'USD' ? 'US$' : 'R$';
                 let tipoClass = t.tipo === 'receita' ? 'badge-receita' : t.tipo === 'despesa' ? 'badge-despesa' : 'badge-investimento';
                 let tipoDisplay = t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1);
 
@@ -1261,50 +1111,33 @@
             });
         }
 
+        // ========== INICIALIZAR DATAS ==========
         function inicializarDatas() {
             const hoje = new Date().toISOString().split('T')[0];
-            if (document.getElementById('receitaData')) {
-                document.getElementById('receitaData').value = hoje;
-            }
-            if (document.getElementById('despesaData')) {
-                document.getElementById('despesaData').value = hoje;
-            }
-            if (document.getElementById('investimentoData')) {
-                document.getElementById('investimentoData').value = hoje;
-            }
+            document.getElementById('receitaData').value = hoje;
+            document.getElementById('despesaData').value = hoje;
+            document.getElementById('investimentoData').value = hoje;
         }
 
         // ========== GRÁFICOS ==========
         function atualizarGraficoPatrimonio() {
             const ctx = document.getElementById('patrimonioChart');
             if (!ctx) return;
-            
+
             const dados = {};
             transacoes.forEach(t => {
-                if (!dados[t.data]) {
-                    dados[t.data] = 0;
-                }
+                if (!dados[t.data]) dados[t.data] = 0;
                 let valor = t.valor;
-                if (t.moeda === 'USD') {
-                    valor = valor * configuracoes.usdRate;
-                }
-                if (t.tipo === 'receita' || t.tipo === 'investimento') {
-                    dados[t.data] += valor;
-                } else if (t.tipo === 'despesa') {
-                    dados[t.data] -= valor;
-                }
+                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
+                if (t.tipo === 'receita' || t.tipo === 'investimento') dados[t.data] += valor;
+                else if (t.tipo === 'despesa') dados[t.data] -= valor;
             });
 
             const datas = Object.keys(dados).sort();
             let patrimonio = 0;
-            const valores = datas.map(data => {
-                patrimonio += dados[data];
-                return patrimonio;
-            });
+            const valores = datas.map(data => { patrimonio += dados[data]; return patrimonio; });
 
-            if (patrimonioChart) {
-                patrimonioChart.destroy();
-            }
+            if (patrimonioChart) patrimonioChart.destroy();
 
             patrimonioChart = new Chart(ctx.getContext('2d'), {
                 type: 'line',
@@ -1327,17 +1160,11 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: true }
-                    },
+                    plugins: { legend: { display: true } },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR');
-                                }
-                            }
+                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
                         }
                     }
                 }
@@ -1355,20 +1182,15 @@
             for (let ano = 2026; ano <= 2030; ano++) {
                 const mesesPassados = (ano - 2026) * 12;
                 const monthlyRate = configuracoes.monthlyRate / 100;
-                const aporte = 1300;
-                
                 let valor = patrimonioAtual;
                 for (let mes = 0; mes < mesesPassados; mes++) {
-                    valor = valor * (1 + monthlyRate) + aporte;
+                    valor = valor * (1 + monthlyRate) + 1300;
                 }
-
                 anosProjecao.push(ano.toString());
                 valoresProjecao.push(Math.round(valor));
             }
 
-            if (projecaoChart) {
-                projecaoChart.destroy();
-            }
+            if (projecaoChart) projecaoChart.destroy();
 
             projecaoChart = new Chart(ctx.getContext('2d'), {
                 type: 'bar',
@@ -1377,13 +1199,7 @@
                     datasets: [{
                         label: 'Patrimônio Projetado',
                         data: valoresProjecao,
-                        backgroundColor: [
-                            'rgba(102, 126, 234, 0.8)',
-                            'rgba(118, 75, 162, 0.8)',
-                            'rgba(245, 87, 108, 0.8)',
-                            'rgba(240, 147, 251, 0.8)',
-                            'rgba(67, 233, 123, 0.8)'
-                        ],
+                        backgroundColor: ['rgba(102, 126, 234, 0.8)', 'rgba(118, 75, 162, 0.8)', 'rgba(245, 87, 108, 0.8)', 'rgba(240, 147, 251, 0.8)', 'rgba(67, 233, 123, 0.8)'],
                         borderRadius: 10,
                         borderSkipped: false
                     }]
@@ -1391,19 +1207,8 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: true }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR');
-                                }
-                            }
-                        }
-                    }
+                    plugins: { legend: { display: true } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
                 }
             });
         }
@@ -1414,46 +1219,27 @@
 
             const categorias = {};
             transacoes.forEach(t => {
-                if (!categorias[t.categoria]) {
-                    categorias[t.categoria] = 0;
-                }
+                if (!categorias[t.categoria]) categorias[t.categoria] = 0;
                 let valor = t.valor;
-                if (t.moeda === 'USD') {
-                    valor = valor * configuracoes.usdRate;
-                }
-                if (t.tipo === 'receita' || t.tipo === 'investimento') {
-                    categorias[t.categoria] += valor;
-                }
+                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
+                if (t.tipo === 'receita' || t.tipo === 'investimento') categorias[t.categoria] += valor;
             });
 
-            const cores = [
-                '#667eea', '#764ba2', '#f5576c', '#f093fb', '#43e97b', 
-                '#38f9d7', '#4facfe', '#00f2fe', '#f5af19', '#ff6b6b'
-            ];
+            const cores = ['#667eea', '#764ba2', '#f5576c', '#f093fb', '#43e97b', '#38f9d7', '#4facfe', '#00f2fe', '#f5af19', '#ff6b6b'];
 
-            if (categoriaChart) {
-                categoriaChart.destroy();
-            }
-
-            if (Object.keys(categorias).length === 0) {
-                return;
-            }
+            if (categoriaChart) categoriaChart.destroy();
+            if (Object.keys(categorias).length === 0) return;
 
             categoriaChart = new Chart(ctx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(categorias),
-                    datasets: [{
-                        data: Object.values(categorias),
-                        backgroundColor: cores.slice(0, Object.keys(categorias).length)
-                    }]
+                    datasets: [{ data: Object.values(categorias), backgroundColor: cores.slice(0, Object.keys(categorias).length) }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: {
-                        legend: { position: 'bottom' }
-                    }
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
         }
@@ -1465,69 +1251,39 @@
             const meses = {};
             transacoes.forEach(t => {
                 const mesChave = t.data.substring(0, 7);
-                if (!meses[mesChave]) {
-                    meses[mesChave] = { receita: 0, despesa: 0 };
-                }
+                if (!meses[mesChave]) meses[mesChave] = { receita: 0, despesa: 0 };
                 let valor = t.valor;
-                if (t.moeda === 'USD') {
-                    valor = valor * configuracoes.usdRate;
-                }
-                if (t.tipo === 'receita' || t.tipo === 'investimento') {
-                    meses[mesChave].receita += valor;
-                } else if (t.tipo === 'despesa') {
-                    meses[mesChave].despesa += valor;
-                }
+                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
+                if (t.tipo === 'receita' || t.tipo === 'investimento') meses[mesChave].receita += valor;
+                else if (t.tipo === 'despesa') meses[mesChave].despesa += valor;
             });
 
             const mesesOrdenados = Object.keys(meses).sort();
             const receitas = mesesOrdenados.map(m => meses[m].receita);
             const despesas = mesesOrdenados.map(m => meses[m].despesa);
 
-            if (receitaDespesaChart) {
-                receitaDespesaChart.destroy();
-            }
+            if (receitaDespesaChart) receitaDespesaChart.destroy();
 
             receitaDespesaChart = new Chart(ctx.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: mesesOrdenados.map(m => m.replace('-', '/')),
                     datasets: [
-                        {
-                            label: 'Receitas',
-                            data: receitas,
-                            backgroundColor: 'rgba(67, 233, 123, 0.8)',
-                            borderRadius: 8
-                        },
-                        {
-                            label: 'Despesas',
-                            data: despesas,
-                            backgroundColor: 'rgba(245, 87, 108, 0.8)',
-                            borderRadius: 8
-                        }
+                        { label: 'Receitas', data: receitas, backgroundColor: 'rgba(67, 233, 123, 0.8)', borderRadius: 8 },
+                        { label: 'Despesas', data: despesas, backgroundColor: 'rgba(245, 87, 108, 0.8)', borderRadius: 8 }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: {
-                        legend: { position: 'top' }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR');
-                                }
-                            }
-                        }
-                    }
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
                 }
             });
         }
 
-        // ========== CONFIGURAÇÕES ==========
-        async function salvarConfigurações() {
+        // ========== SALVAR CONFIG ==========
+        document.getElementById('btnSalvarConfig').addEventListener('click', async () => {
             const usdRate = parseFloat(document.getElementById('usdRate').value);
             const monthlyRate = parseFloat(document.getElementById('monthlyRate').value);
             const targetGoal = parseFloat(document.getElementById('targetGoal').value);
@@ -1538,31 +1294,21 @@
             }
 
             try {
-                const db = firebase.firestore();
                 await db.collection('configuracoes').doc('geral').set({
-                    usdRate: usdRate,
-                    monthlyRate: monthlyRate,
-                    targetGoal: targetGoal,
-                    ultimaAtualizacao: new Date()
+                    usdRate, monthlyRate, targetGoal, ultimaAtualizacao: new Date()
                 });
 
-                configuracoes.usdRate = usdRate;
-                configuracoes.monthlyRate = monthlyRate;
-                configuracoes.targetGoal = targetGoal;
-
-                const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
-                modal.hide();
-                
-                alert('Configurações salvas com sucesso!');
+                configuracoes = { usdRate, monthlyRate, targetGoal };
+                bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+                alert('Configurações salvas!');
                 atualizar();
             } catch (error) {
-                alert('Erro ao salvar: ' + error.message);
+                alert('Erro: ' + error.message);
             }
-        }
+        });
 
         // ========== ATUALIZAR TUDO ==========
         function atualizar() {
-            console.log('🔄 Atualizando dashboard...');
             atualizarKPIs();
             atualizarTabela();
             atualizarGraficoPatrimonio();
@@ -1571,14 +1317,7 @@
             atualizarGraficoReceitaDespesa();
         }
 
-        // ========== INICIAR QUANDO DOM ESTIVER PRONTO ==========
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarEventos);
-        } else {
-            inicializarEventos();
-        }
-
-        console.log('✅ App.js carregado com sucesso!');
+        console.log('✅ Dashboard pronto!');
     </script>
 </body>
 </html>
