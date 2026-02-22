@@ -68,6 +68,7 @@
             text-align: center;
             color: #666;
             margin-bottom: 30px;
+            font-size: 0.9rem;
         }
 
         .auth-form {
@@ -115,11 +116,11 @@
             font-weight: 600;
             border-radius: 10px;
             transition: all 0.2s ease;
+            border: none;
         }
 
         .auth-form .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
             color: white;
         }
 
@@ -129,28 +130,25 @@
             color: white;
         }
 
-        .auth-form .btn-success {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            border: none;
+        .auth-form .btn-primary:active {
             color: white;
         }
 
-        .auth-form .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(67, 233, 123, 0.4);
-            color: white;
+        .auth-alert {
+            margin-top: 15px;
+            border-radius: 10px;
+            animation: slideDown 0.3s ease;
         }
 
-        .auth-form .btn-secondary {
-            background: #6c757d;
-            border: none;
-            color: white;
-        }
-
-        .auth-form .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-            color: white;
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* ========== APP SCREEN ========== */
@@ -406,21 +404,19 @@
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
+            color: white;
         }
 
         .badge-receita {
             background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            color: white;
         }
 
         .badge-despesa {
             background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-            color: white;
         }
 
         .badge-investimento {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
         }
 
         .btn-delete {
@@ -527,40 +523,23 @@
                 <p>Controle compartilhado de finanças em tempo real</p>
 
                 <!-- Login Form -->
-                <div id="loginForm" class="auth-form">
+                <div class="auth-form">
                     <h3>Login</h3>
                     <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="loginEmail" placeholder="seu@email.com">
+                        <label class="form-label">Email/Usuário</label>
+                        <input type="text" class="form-control" id="loginEmail" placeholder="MoratoFamily">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="loginPassword" placeholder="Sua senha">
+                        <input type="password" class="form-control" id="loginPassword" placeholder="LuccaMatteo">
                     </div>
                     <button class="btn btn-primary w-100 mb-3" id="btnLogin">Entrar</button>
-                    <button class="btn btn-secondary w-100" id="btnMostrarRegistro">Criar Conta</button>
+                    <small class="text-muted d-block text-center">
+                        <strong>Demo:</strong> MoratoFamily / LuccaMatteo
+                    </small>
                 </div>
 
-                <!-- Register Form -->
-                <div id="registerForm" class="auth-form" style="display:none;">
-                    <h3>Criar Conta</h3>
-                    <div class="mb-3">
-                        <label class="form-label">Nome</label>
-                        <input type="text" class="form-control" id="registerNome" placeholder="Seu nome">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" id="registerEmail" placeholder="seu@email.com">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="registerPassword" placeholder="Mínimo 6 caracteres">
-                    </div>
-                    <button class="btn btn-success w-100 mb-3" id="btnRegistrar">Registrar</button>
-                    <button class="btn btn-secondary w-100" id="btnVoltar">Voltar ao Login</button>
-                </div>
-
-                <div id="authError" class="alert alert-danger mt-3" style="display:none;"></div>
+                <div id="authError" class="alert alert-danger auth-alert" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -572,7 +551,7 @@
             <header class="header">
                 <div class="header-content">
                     <h1><i class="fas fa-chart-line"></i> Dashboard Financeiro 2030</h1>
-                    <p class="subtitle" id="usuarioNome">Bem-vindo!</p>
+                    <p class="subtitle" id="usuarioNome">Bem-vindo, MoratoFamily!</p>
                 </div>
                 <div class="header-buttons">
                     <button class="btn btn-settings" data-bs-toggle="modal" data-bs-target="#settingsModal">
@@ -693,7 +672,6 @@
                                 <th>Categoria</th>
                                 <th>Descrição</th>
                                 <th>Valor</th>
-                                <th>Usuário</th>
                                 <th>Ação</th>
                             </tr>
                         </thead>
@@ -875,6 +853,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        // ========== CREDENCIAIS FIXAS ==========
+        const USUARIO_PADRAO = "MoratoFamily";
+        const SENHA_PADRAO = "LuccaMatteo";
+
         // ========== FIREBASE INIT ==========
         const firebaseConfig = {
             apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
@@ -887,13 +869,12 @@
         };
 
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
         const db = firebase.firestore();
 
         console.log('✅ Firebase inicializado');
 
         // ========== VARIÁVEIS GLOBAIS ==========
-        let usuarioAtual = null;
+        let isLogado = false;
         let configuracoes = {
             usdRate: 5.00,
             monthlyRate: 1.00,
@@ -902,125 +883,80 @@
         let transacoes = [];
         let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
 
-        // ========== AUTH ==========
-        auth.onAuthStateChanged(async (user) => {
-            console.log('👤 Estado de autenticação mudou:', user ? user.email : 'Deslogado');
-            
-            if (user) {
-                usuarioAtual = user;
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('appScreen').style.display = 'block';
-                document.getElementById('usuarioNome').textContent = `Bem-vindo, ${user.email}!`;
-                
-                await carregarDadosDoFirebase();
-                inicializarDatas();
-                atualizar();
-            } else {
-                usuarioAtual = null;
-                document.getElementById('authScreen').style.display = 'block';
-                document.getElementById('appScreen').style.display = 'none';
-            }
-        });
-
-        // Fazer Login
-        document.getElementById('btnLogin').addEventListener('click', async () => {
+        // ========== LOGIN ==========
+        document.getElementById('btnLogin').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const senha = document.getElementById('loginPassword').value;
 
+            console.log('🔑 Tentando login com:', email);
+
             if (!email || !senha) {
-                alert('Preencha email e senha!');
+                mostrarErroAuth('Preencha todos os campos!');
                 return;
             }
 
-            try {
-                await auth.signInWithEmailAndPassword(email, senha);
+            if (email === USUARIO_PADRAO && senha === SENHA_PADRAO) {
+                console.log('✅ Login bem-sucedido!');
+                isLogado = true;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('appScreen').style.display = 'block';
+                
                 document.getElementById('loginEmail').value = '';
                 document.getElementById('loginPassword').value = '';
-            } catch (error) {
-                alert('Erro ao fazer login: ' + error.message);
-            }
-        });
-
-        // Fazer Registro
-        document.getElementById('btnRegistrar').addEventListener('click', async () => {
-            const nome = document.getElementById('registerNome').value;
-            const email = document.getElementById('registerEmail').value;
-            const senha = document.getElementById('registerPassword').value;
-
-            if (!nome || !email || !senha) {
-                alert('Preencha todos os campos!');
-                return;
-            }
-
-            if (senha.length < 6) {
-                alert('Senha deve ter pelo menos 6 caracteres!');
-                return;
-            }
-
-            try {
-                const resultado = await auth.createUserWithEmailAndPassword(email, senha);
                 
-                await db.collection('usuarios').doc(resultado.user.uid).set({
-                    nome: nome,
-                    email: email,
-                    dataCriacao: new Date(),
-                    ultimoLogin: new Date()
-                });
-
-                await db.collection('configuracoes').doc('geral').set({
-                    usdRate: 5.00,
-                    monthlyRate: 1.00,
-                    targetGoal: 112000,
-                    ultimaAtualizacao: new Date()
-                }, { merge: true });
-
-                document.getElementById('registerNome').value = '';
-                document.getElementById('registerEmail').value = '';
-                document.getElementById('registerPassword').value = '';
-                
-                document.getElementById('loginForm').style.display = 'block';
-                document.getElementById('registerForm').style.display = 'none';
-                
-                alert('Conta criada com sucesso! Faça login agora.');
-            } catch (error) {
-                alert('Erro ao criar conta: ' + error.message);
+                carregarDadosDoFirebase();
+                inicializarDatas();
+                atualizar();
+            } else {
+                console.log('❌ Credenciais incorretas!');
+                mostrarErroAuth('Email ou senha incorretos!');
             }
         });
 
-        // Fazer Logout
-        document.getElementById('btnLogout').addEventListener('click', async () => {
-            await auth.signOut();
+        // ========== LOGOUT ==========
+        document.getElementById('btnLogout').addEventListener('click', () => {
+            console.log('🚪 Fazendo logout...');
+            isLogado = false;
+            document.getElementById('authScreen').style.display = 'block';
+            document.getElementById('appScreen').style.display = 'none';
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
         });
 
-        // Mostrar/Ocultar Formulários
-        document.getElementById('btnMostrarRegistro').addEventListener('click', () => {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('registerForm').style.display = 'block';
-        });
+        // ========== MOSTRAR ERRO ==========
+        function mostrarErroAuth(mensagem) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = mensagem;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
 
-        document.getElementById('btnVoltar').addEventListener('click', () => {
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('registerForm').style.display = 'none';
-        });
-
-        // ========== CARREGAR DADOS ==========
+        // ========== CARREGAR DADOS DO FIREBASE ==========
         async function carregarDadosDoFirebase() {
             try {
+                console.log('📥 Carregando dados do Firebase...');
+                
+                // Carregar configurações
                 const configDoc = await db.collection('configuracoes').doc('geral').get();
                 if (configDoc.exists) {
                     const data = configDoc.data();
                     configuracoes.usdRate = data.usdRate || 5.00;
                     configuracoes.monthlyRate = data.monthlyRate || 1.00;
                     configuracoes.targetGoal = data.targetGoal || 112000;
+                    console.log('✅ Configurações carregadas');
                 }
 
                 document.getElementById('usdRate').value = configuracoes.usdRate;
                 document.getElementById('monthlyRate').value = configuracoes.monthlyRate;
                 document.getElementById('targetGoal').value = configuracoes.targetGoal;
 
+                // Carregar transações em tempo real
                 db.collection('transacoes')
                     .orderBy('data', 'desc')
                     .onSnapshot((snapshot) => {
+                        console.log('📊 Atualizando transações...');
                         transacoes = [];
                         snapshot.forEach((doc) => {
                             transacoes.push({
@@ -1028,7 +964,10 @@
                                 ...doc.data()
                             });
                         });
+                        console.log(`✅ ${transacoes.length} transações carregadas`);
                         atualizar();
+                    }, (error) => {
+                        console.error('❌ Erro ao carregar transações:', error);
                     });
             } catch (error) {
                 console.error('❌ Erro ao carregar dados:', error);
@@ -1055,8 +994,6 @@
                     descricao: descricao,
                     valor: valor,
                     moeda: 'BRL',
-                    usuarioId: usuarioAtual.uid,
-                    usuarioEmail: usuarioAtual.email,
                     dataCriacao: new Date(),
                     dataAtualizacao: new Date()
                 });
@@ -1093,8 +1030,6 @@
                     descricao: descricao,
                     valor: valor,
                     moeda: 'BRL',
-                    usuarioId: usuarioAtual.uid,
-                    usuarioEmail: usuarioAtual.email,
                     dataCriacao: new Date(),
                     dataAtualizacao: new Date()
                 });
@@ -1131,8 +1066,6 @@
                     descricao: tipo,
                     valor: valor,
                     moeda: moeda,
-                    usuarioId: usuarioAtual.uid,
-                    usuarioEmail: usuarioAtual.email,
                     dataCriacao: new Date(),
                     dataAtualizacao: new Date()
                 });
@@ -1222,6 +1155,11 @@
             const tbody = document.getElementById('transactionsTable');
             tbody.innerHTML = '';
 
+            if (transacoes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação registrada</td></tr>';
+                return;
+            }
+
             transacoes.forEach(t => {
                 let valor = t.valor;
                 let moedaDisplay = 'R$';
@@ -1240,7 +1178,6 @@
                         <td>${t.categoria}</td>
                         <td>${t.descricao}</td>
                         <td>${moedaDisplay} ${valor.toFixed(2)}</td>
-                        <td><small>${t.usuarioEmail}</small></td>
                         <td><button class="btn-delete" onclick="deletarTransacao('${t.id}')">Deletar</button></td>
                     </tr>
                 `;
@@ -1546,7 +1483,8 @@
             atualizarGraficoReceitaDespesa();
         }
 
-        console.log('✅ App carregado com sucesso!');
+        console.log('✅ Dashboard carregado com sucesso!');
+        console.log('📝 Credenciais: MoratoFamily / LuccaMatteo');
     </script>
 </body>
 </html>
