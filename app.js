@@ -13,7 +13,7 @@ const defaultData = {
 
 // Inicializar dados
 let app = {
-    transactions: JSON.parse(localStorage.getItem('transactions')) || defaultData.transactions,
+    transactions: [],
     settings: JSON.parse(localStorage.getItem('settings')) || defaultData.settings
 };
 
@@ -547,9 +547,24 @@ function atualizar() {
 
 // Inicializar
 window.addEventListener('DOMContentLoaded', () => {
+
     inicializarDatas();
+
     document.getElementById('usdRate').value = app.settings.usdRate;
     document.getElementById('monthlyRate').value = app.settings.monthlyRate;
     document.getElementById('targetGoal').value = app.settings.targetGoal;
-    atualizar();
+
+    // 🔥 Escuta em tempo real do Firestore
+    onSnapshot(collection(db, "transactions"), (snapshot) => {
+        app.transactions = [];
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id; // importante para deletar depois
+            app.transactions.push(data);
+        });
+
+        atualizar();
+    });
+
 });
