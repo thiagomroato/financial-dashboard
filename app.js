@@ -19,12 +19,15 @@ let app = {
 
 // Salvar dados
 function salvarDados() {
-    localStorage.setItem('transactions', JSON.stringify(app.transactions));
+    async function salvarTransacaoFirebase(transacao){
+    await addDoc(collection(db, "transactions"), transacao);
+}
     localStorage.setItem('settings', JSON.stringify(app.settings));
 }
 
 // Adicionar Receita
-function adicionarReceita() {
+async function adicionarReceita() {
+
     const data = document.getElementById('receitaData').value;
     const categoria = document.getElementById('receitaCategoria').value;
     const descricao = document.getElementById('receitaDescricao').value;
@@ -36,7 +39,6 @@ function adicionarReceita() {
     }
 
     const novaReceita = {
-        id: Date.now(),
         data: data,
         tipo: 'receita',
         categoria: categoria,
@@ -45,16 +47,11 @@ function adicionarReceita() {
         moeda: 'BRL'
     };
 
-    app.transactions.push(novaReceita);
-    salvarDados();
-    atualizar();
+    await salvarTransacaoFirebase(novaReceita);
 
-    // Fechar modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('receitaModal'));
     modal.hide();
 
-    // Limpar campos
-    document.getElementById('receitaData').value = '';
     document.getElementById('receitaDescricao').value = '';
     document.getElementById('receitaValor').value = '';
 }
