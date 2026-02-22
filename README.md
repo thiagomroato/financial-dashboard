@@ -1,38 +1,51 @@
-# Financial Dashboard
+# 💰 Dashboard Financeiro 2030
 
-## Overview
-The Financial Dashboard is a powerful tool designed to help users visualize and manage their financial data efficiently. It provides insights into income, expenses, and overall financial health through an intuitive interface.
+Um aplicativo web completo para gerenciamento financeiro pessoal com projeções até 2030.
 
-## Features
-- **Data Visualization**: Interactive charts and graphs that showcase financial trends.
-- **Data Import**: Ability to import financial data from various formats.
-- **User Management**: Support for multiple user accounts with different access levels.
-- **Custom Reports**: Generate tailored reports based on user-defined criteria.
+## 🎯 Funcionalidades
 
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/thiagomroato/financial-dashboard.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd financial-dashboard
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the application:
-   ```bash
-   npm start
-   ```
+✅ **Dashboard Interativo**
+- KPIs em tempo real (Patrimônio atual, Receitas, Despesas, Meta 2030)
+- Gráficos dinâmicos e responsivos
 
-## Usage
-- After starting the application, navigate to `http://localhost:3000` in your web browser.
-- Log in with your credentials to access your financial dashboard.
+✅ **Gerenciamento de Transações**
+- Adicionar Receitas (Salário, Rendimento, Bônus, Aporte)
+- Adicionar Despesas (Alimentação, Transporte, Moradia, Lazer, etc)
+- Adicionar Investimentos (Ações Brasil, P&G USD, Renda Fixa)
 
-## Contributing
-If you would like to contribute to this project, please fork the repository and submit a pull request with your changes. 
+✅ **Visualizações Avançadas**
+- Evolução do Patrimônio (gráfico de linha)
+- Projeção até 2030 (gráfico de barras)
+- Distribuição por Categoria (gráfico donut)
+- Comparação Receita vs Despesa (gráfico de barras)
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+✅ **Persistência de Dados**
+- Todos os dados são salvos localmente (localStorage)
+- Sincronização automática
+
+✅ **Configurações Personalizáveis**
+- Cotação USD → BRL customizável
+- Taxa de rendimento mensal ajustável
+- Meta de patrimônio personalizada
+
+## 🚀 Como Usar
+
+### 1. Acessar a Aplicação
+O app está disponível em: `https://thiagomroato.github.io/financial-dashboard`
+
+### 2. Adicionar Dados
+- **Receita**: Clique em "Adicionar Receita" e preencha os dados
+- **Despesa**: Clique em "Adicionar Despesa" e preencha os dados
+- **Investimento**: Clique em "Adicionar Investimento" e preencha os dados
+
+### 3. Visualizar Dashboard
+- Todos os gráficos são atualizados em tempo real
+- Histórico de transações fica visível na tabela
+
+### 4. Ajustar Configurações
+- Clique em ⚙️ Configurações para:
+  - Alterar cotação USD
+  - Ajustar taxa de rendimento
+  - Modificar meta de patrimônio 2030
+
+## 📊 Dados Iniciais Padrão
