@@ -1,9 +1,4 @@
-// Import Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-// Sua configuração Firebase
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
   authDomain: "financial-dashboard-a2b16.firebaseapp.com",
@@ -15,9 +10,11 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+
+// Obter referências
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // Variáveis globais
 let usuarioAtual = null;
@@ -27,5 +24,3 @@ let configuracoes = {
   targetGoal: 112000
 };
 let transacoes = [];
-
-export { auth, db, usuarioAtual, configuracoes, transacoes };
