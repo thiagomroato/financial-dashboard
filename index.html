@@ -3,46 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 Dashboard Financeiro 2030 - Colaborativo</title>
+    <title>💰 Dashboard Financeiro 2030</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --success: #43e97b;
-            --danger: #f5576c;
-            --info: #4facfe;
-            --warning: #f5af19;
-            --light: #f8f9fa;
-            --dark: #343a40;
-        }
-
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
         }
 
         .auth-screen {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-        }
-
-        .auth-container {
-            width: 100%;
-            max-width: 400px;
         }
 
         .auth-box {
@@ -50,6 +25,8 @@
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
         }
 
         .auth-box h1 {
@@ -60,1341 +37,488 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .auth-box > p {
-            text-align: center;
-            color: #666;
             margin-bottom: 30px;
-            font-size: 0.9rem;
         }
 
-        .auth-form {
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .auth-form h3 {
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .auth-form .form-control {
+        .form-control {
             border-radius: 10px;
             border: 2px solid #e9ecef;
             padding: 12px 15px;
-            font-size: 1rem;
-            transition: all 0.2s ease;
         }
 
-        .auth-form .form-control:focus {
+        .form-control:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
 
-        .auth-form .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
-
-        .auth-form .btn {
-            padding: 12px 20px;
-            font-weight: 600;
-            border-radius: 10px;
-            transition: all 0.2s ease;
-            border: none;
-        }
-
-        .auth-form .btn-primary {
+        .btn-login {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        .auth-form .btn-primary:hover {
+        .btn-login:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
-
-        .auth-alert {
-            margin-top: 15px;
-            border-radius: 10px;
-            animation: slideDown 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .app-screen {
             background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 0;
-        }
-
-        .container-fluid {
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 0;
+            padding: 40px 20px;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            margin-bottom: 40px;
             flex-wrap: wrap;
             gap: 20px;
         }
 
-        .header-content h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 0;
-        }
-
-        .header-content .subtitle {
-            font-size: 1rem;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-settings, .btn-logout {
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .btn-settings {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .btn-settings:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
-
         .btn-logout {
             background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-        }
-
-        .btn-logout:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
             color: white;
-        }
-
-        .kpis-section {
-            padding: 0 40px;
-            margin-bottom: 40px;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
         }
 
         .kpi-card {
             background: white;
+            padding: 20px;
             border-radius: 15px;
-            padding: 25px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .kpi-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            margin-right: 20px;
-        }
-
-        .kpi-content {
-            flex: 1;
-        }
-
-        .kpi-label {
-            font-size: 0.9rem;
-            color: #999;
-            margin-bottom: 5px;
-            font-weight: 600;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
         .kpi-value {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #333;
-            margin: 0;
-        }
-
-        .actions-section {
-            display: flex;
-            gap: 20px;
-            padding: 0 40px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
+            color: #667eea;
         }
 
         .btn-action {
-            flex: 1;
-            min-width: 200px;
-            padding: 18px 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 50px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .btn-receita {
             background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-
-        .btn-receita:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(67, 233, 123, 0.4);
-            color: white;
-        }
-
-        .btn-despesa {
-            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-        }
-
-        .btn-despesa:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(245, 87, 108, 0.4);
-            color: white;
-        }
-
-        .btn-investimento {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .btn-investimento:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(79, 172, 254, 0.4);
-            color: white;
-        }
-
-        .charts-section {
-            padding: 0 40px;
-            margin-bottom: 40px;
-        }
-
-        .chart-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .chart-card h5 {
-            margin-bottom: 20px;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .transactions-section {
-            padding: 0 40px 40px 40px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            margin: 0 40px 40px 40px;
-        }
-
-        .transactions-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 30px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .transactions-header h5 {
-            margin: 0;
-            font-weight: 700;
-            color: #333;
-        }
-
-        .table {
-            margin: 0;
-        }
-
-        .table thead {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .table tbody tr {
-            border-bottom: 1px solid #f0f0f0;
-            transition: all 0.2s ease;
-        }
-
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .badge {
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: white;
-        }
-
-        .badge-receita {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-
-        .badge-despesa {
-            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-        }
-
-        .badge-investimento {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .btn-delete {
-            background: #ff6b6b;
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-
-        .btn-delete:hover {
-            background: #ee5a52;
-            transform: scale(1.05);
-        }
-
-        .modal-content {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        .form-control, .form-select {
+            padding: 12px 20px;
             border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-
-        .form-label {
+            margin: 10px 10px 10px 0;
+            cursor: pointer;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
         }
 
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                text-align: center;
-                padding: 20px;
-            }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
 
-            .header-content h1 {
-                font-size: 1.8rem;
-            }
-
-            .header-buttons {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            .btn-settings,
-            .btn-logout {
-                width: 100%;
-            }
-
-            .actions-section {
-                padding: 0 20px;
-                flex-direction: column;
-            }
-
-            .btn-action {
-                width: 100%;
-            }
-
-            .kpis-section {
-                padding: 0 20px;
-            }
-
-            .charts-section {
-                padding: 0 20px;
-            }
-
-            .transactions-section {
-                margin: 0 20px 40px 20px;
-            }
-
-            .kpi-card {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .kpi-icon {
-                margin-right: 0;
-                margin-bottom: 15px;
-            }
+        .alert {
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
-    <!-- Auth Screen -->
+    <!-- TELA DE LOGIN -->
     <div id="authScreen" class="auth-screen">
-        <div class="auth-container">
-            <div class="auth-box">
-                <h1><i class="fas fa-chart-line"></i> Dashboard Financeiro 2030</h1>
-                <p>Controle compartilhado de finanças em tempo real</p>
+        <div class="auth-box">
+            <h1><i class="fas fa-chart-line"></i> Dashboard 2030</h1>
+            
+            <div>
+                <label class="form-label">Usuário</label>
+                <input type="text" class="form-control" id="email" value="MoratoFamily">
+            </div>
 
-                <div class="auth-form">
-                    <h3>Login</h3>
-                    <div class="mb-3">
-                        <label class="form-label">Email/Usuário</label>
-                        <input type="text" class="form-control" id="loginEmail" placeholder="MoratoFamily">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Senha</label>
-                        <input type="password" class="form-control" id="loginPassword" placeholder="LuccaMatteo">
-                    </div>
-                    <button class="btn btn-primary w-100 mb-3" id="btnLogin">Entrar</button>
-                    <small class="text-muted d-block text-center">
-                        <strong>Demo:</strong> MoratoFamily / LuccaMatteo
-                    </small>
+            <div style="margin-top: 15px;">
+                <label class="form-label">Senha</label>
+                <input type="password" class="form-control" id="senha" value="LuccaMatteo">
+            </div>
+
+            <button class="btn-login" onclick="login()">ENTRAR</button>
+
+            <div id="msgErro" class="alert alert-danger" style="display: none; margin-top: 15px;"></div>
+
+            <p style="text-align: center; margin-top: 20px; font-size: 0.9rem; color: #666;">
+                <strong>Demo:</strong><br>
+                MoratoFamily / LuccaMatteo
+            </p>
+        </div>
+    </div>
+
+    <!-- TELA DO APP -->
+    <div id="appScreen" style="display: none;">
+        <div class="container-fluid">
+            <div class="header">
+                <div>
+                    <h2>📊 Dashboard Financeiro 2030</h2>
+                    <p id="nomeUsuario" style="margin: 0; color: #666;">Bem-vindo!</p>
                 </div>
+                <button class="btn-logout" onclick="logout()">SAIR</button>
+            </div>
 
-                <div id="authError" class="alert alert-danger auth-alert" style="display:none;"></div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="kpi-card">
+                        <p style="color: #999; margin: 0;">Patrimônio Atual</p>
+                        <p class="kpi-value" id="totalPatrimonio">R$ 0,00</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="kpi-card">
+                        <p style="color: #999; margin: 0;">Meta 2030</p>
+                        <p class="kpi-value" id="metaGoal">R$ 112.000,00</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button class="btn-action" onclick="abrirModalReceita()">➕ RECEITA</button>
+                <button class="btn-action" onclick="abrirModalDespesa()">➖ DESPESA</button>
+                <button class="btn-action" onclick="abrirModalInvestimento()">📈 INVESTIMENTO</button>
+            </div>
+
+            <div class="table-container">
+                <h4>Transações</h4>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaTransacoes">
+                        <tr><td colspan="5" class="text-center">Nenhuma transação</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- App Screen -->
-    <div id="appScreen" class="app-screen" style="display:none;">
-        <div class="container-fluid">
-            <header class="header">
-                <div class="header-content">
-                    <h1><i class="fas fa-chart-line"></i> Dashboard Financeiro 2030</h1>
-                    <p class="subtitle" id="usuarioNome">Bem-vindo, MoratoFamily!</p>
-                </div>
-                <div class="header-buttons">
-                    <button class="btn btn-settings" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                        <i class="fas fa-cog"></i> Configurações
-                    </button>
-                    <button class="btn btn-logout" id="btnLogout">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </button>
-                </div>
-            </header>
-
-            <section class="kpis-section">
-                <div class="row g-4">
-                    <div class="col-md-6 col-lg-3">
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <i class="fas fa-wallet"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <p class="kpi-label">Patrimônio Atual</p>
-                                <p class="kpi-value" id="totalPatrimonio">R$ 0,00</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                                <i class="fas fa-arrow-up"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <p class="kpi-label">Receitas Mês</p>
-                                <p class="kpi-value" id="totalReceitas">R$ 0,00</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                                <i class="fas fa-arrow-down"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <p class="kpi-label">Despesas Mês</p>
-                                <p class="kpi-value" id="totalDespesas">R$ 0,00</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                                <i class="fas fa-target"></i>
-                            </div>
-                            <div class="kpi-content">
-                                <p class="kpi-label">Meta 2030</p>
-                                <p class="kpi-value" id="metaGoal">R$ 112.000,00</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="actions-section">
-                <button class="btn btn-action btn-receita" data-bs-toggle="modal" data-bs-target="#receitaModal">
-                    <i class="fas fa-plus"></i> Adicionar Receita
-                </button>
-                <button class="btn btn-action btn-despesa" data-bs-toggle="modal" data-bs-target="#despesaModal">
-                    <i class="fas fa-minus"></i> Adicionar Despesa
-                </button>
-                <button class="btn btn-action btn-investimento" data-bs-toggle="modal" data-bs-target="#investimentoModal">
-                    <i class="fas fa-chart-bar"></i> Adicionar Investimento
-                </button>
-            </section>
-
-            <section class="charts-section">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="chart-card">
-                            <h5><i class="fas fa-chart-line"></i> Evolução do Patrimônio</h5>
-                            <canvas id="patrimonioChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="chart-card">
-                            <h5><i class="fas fa-chart-bar"></i> Projeção até 2030</h5>
-                            <canvas id="projecaoChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-4 mt-0">
-                    <div class="col-lg-6">
-                        <div class="chart-card">
-                            <h5><i class="fas fa-pie-chart"></i> Distribuição por Categoria</h5>
-                            <canvas id="categoriaChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="chart-card">
-                            <h5><i class="fas fa-balance-scale"></i> Receita vs Despesa</h5>
-                            <canvas id="receitaDespesaChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="transactions-section">
-                <div class="transactions-header">
-                    <h5><i class="fas fa-history"></i> Histórico de Transações</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Categoria</th>
-                                <th>Descrição</th>
-                                <th>Valor</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionsTable">
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <!-- Modal Receita -->
-    <div class="modal fade" id="receitaModal" tabindex="-1">
+    <!-- MODAL RECEITA -->
+    <div class="modal fade" id="modalReceita" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-arrow-up"></i> Adicionar Receita</h5>
+                    <h5 class="modal-title">Adicionar Receita</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Data</label>
+                        <label>Data</label>
                         <input type="date" class="form-control" id="receitaData">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Categoria</label>
-                        <select class="form-select" id="receitaCategoria">
-                            <option value="Salário">Salário</option>
-                            <option value="Rendimento">Rendimento</option>
-                            <option value="Bônus">Bônus</option>
-                            <option value="Aporte">Aporte</option>
-                            <option value="Outro">Outro</option>
-                        </select>
+                        <label>Descrição</label>
+                        <input type="text" class="form-control" id="receitaDesc" placeholder="Salário">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Descrição</label>
-                        <input type="text" class="form-control" id="receitaDescricao" placeholder="Ex: Salário mensal">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Valor (R$)</label>
-                        <input type="number" class="form-control" id="receitaValor" placeholder="0.00" step="0.01">
+                        <label>Valor (R$)</label>
+                        <input type="number" class="form-control" id="receitaValor" step="0.01" placeholder="0.00">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" id="btnAdicionarReceita">Adicionar</button>
+                    <button type="button" class="btn btn-success" onclick="salvarReceita()">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Despesa -->
-    <div class="modal fade" id="despesaModal" tabindex="-1">
+    <!-- MODAL DESPESA -->
+    <div class="modal fade" id="modalDespesa" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="fas fa-arrow-down"></i> Adicionar Despesa</h5>
+                    <h5 class="modal-title">Adicionar Despesa</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Data</label>
+                        <label>Data</label>
                         <input type="date" class="form-control" id="despesaData">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Categoria</label>
-                        <select class="form-select" id="despesaCategoria">
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Outro">Outro</option>
-                        </select>
+                        <label>Descrição</label>
+                        <input type="text" class="form-control" id="despesaDesc" placeholder="Supermercado">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Descrição</label>
-                        <input type="text" class="form-control" id="despesaDescricao" placeholder="Ex: Supermercado">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Valor (R$)</label>
-                        <input type="number" class="form-control" id="despesaValor" placeholder="0.00" step="0.01">
+                        <label>Valor (R$)</label>
+                        <input type="number" class="form-control" id="despesaValor" step="0.01" placeholder="0.00">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="btnAdicionarDespesa">Adicionar</button>
+                    <button type="button" class="btn btn-danger" onclick="salvarDespesa()">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Investimento -->
-    <div class="modal fade" id="investimentoModal" tabindex="-1">
+    <!-- MODAL INVESTIMENTO -->
+    <div class="modal fade" id="modalInvestimento" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-chart-bar"></i> Adicionar Investimento</h5>
+                    <h5 class="modal-title">Adicionar Investimento</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Data</label>
-                        <input type="date" class="form-control" id="investimentoData">
+                        <label>Data</label>
+                        <input type="date" class="form-control" id="investData">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Tipo</label>
-                        <select class="form-select" id="investimentoTipo">
+                        <label>Tipo</label>
+                        <select class="form-select" id="investTipo">
                             <option value="Ações Brasil">Ações Brasil</option>
                             <option value="P&G USD">P&G USD</option>
                             <option value="Renda Fixa">Renda Fixa</option>
-                            <option value="Outro">Outro</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Moeda</label>
-                        <select class="form-select" id="investimentoMoeda">
+                        <label>Moeda</label>
+                        <select class="form-select" id="investMoeda">
                             <option value="BRL">BRL (Real)</option>
                             <option value="USD">USD (Dólar)</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Valor</label>
-                        <input type="number" class="form-control" id="investimentoValor" placeholder="0.00" step="0.01">
+                        <label>Valor</label>
+                        <input type="number" class="form-control" id="investValor" step="0.01" placeholder="0.00">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-info" id="btnAdicionarInvestimento">Adicionar</button>
+                    <button type="button" class="btn btn-info" onclick="salvarInvestimento()">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Configurações -->
-    <div class="modal fade" id="settingsModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fas fa-cog"></i> Configurações</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Cotação USD → BRL</label>
-                        <div class="input-group">
-                            <span class="input-group-text">US$</span>
-                            <input type="number" class="form-control" id="usdRate" step="0.01" value="5.00">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Taxa de Rendimento Mensal (%)</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="monthlyRate" step="0.01" value="1.00">
-                            <span class="input-group-text">%</span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Meta de Patrimônio 2030 (R$)</label>
-                        <input type="number" class="form-control" id="targetGoal" step="1000" value="112000">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="button" class="btn btn-primary" id="btnSalvarConfig">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase SDK - CARREGA PRIMEIRO! -->
+    <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
-
-    <!-- Bootstrap e Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- APP SCRIPT -->
     <script>
-        console.log('🚀 Iniciando Dashboard...');
-
-        // ========== CREDENCIAIS ==========
-        const USUARIO_PADRAO = "MoratoFamily";
-        const SENHA_PADRAO = "LuccaMatteo";
-
-        // ========== FIREBASE ==========
+        // FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
             authDomain: "financial-dashboard-a2b16.firebaseapp.com",
             projectId: "financial-dashboard-a2b16",
             storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
             messagingSenderId: "538205467615",
-            appId: "1:538205467615:web:24326fa7f323902059ca6a",
-            measurementId: "G-6JXMBQH9G1"
+            appId: "1:538205467615:web:24326fa7f323902059ca6a"
         };
 
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        console.log('✅ Firebase inicializado');
 
-        // ========== VARIÁVEIS ==========
-        let isLogado = false;
-        let configuracoes = {
-            usdRate: 5.00,
-            monthlyRate: 1.00,
-            targetGoal: 112000
-        };
         let transacoes = [];
-        let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
 
-        // ========== FUNÇÃO LOGIN ==========
-        function fazerLogin() {
-            console.log('🔑 Botão entrar clicado!');
-            
-            const email = document.getElementById('loginEmail').value.trim();
-            const senha = document.getElementById('loginPassword').value.trim();
+        // LOGIN
+        function login() {
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value.trim();
 
-            console.log('Email:', email);
-            console.log('Senha:', senha);
-            console.log('Esperado - Email:', USUARIO_PADRAO, 'Senha:', SENHA_PADRAO);
-
-            if (!email || !senha) {
-                mostrarErroAuth('Preencha todos os campos!');
-                return;
-            }
-
-            if (email === USUARIO_PADRAO && senha === SENHA_PADRAO) {
-                console.log('✅ LOGIN CORRETO!');
-                isLogado = true;
+            if (email === 'MoratoFamily' && senha === 'LuccaMatteo') {
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'block';
-                document.getElementById('loginEmail').value = '';
-                document.getElementById('loginPassword').value = '';
-                document.getElementById('authError').style.display = 'none';
-                
-                carregarDadosDoFirebase();
-                inicializarDatas();
-                atualizar();
+                document.getElementById('nomeUsuario').textContent = 'Bem-vindo, ' + email + '!';
+                carregarTransacoes();
             } else {
-                console.log('❌ CREDENCIAIS INCORRETAS!');
-                mostrarErroAuth('❌ Email ou senha incorretos!<br>Use: MoratoFamily / LuccaMatteo');
+                document.getElementById('msgErro').style.display = 'block';
+                document.getElementById('msgErro').textContent = '❌ Usuário ou senha incorretos!';
             }
         }
 
-        // ========== FUNÇÃO LOGOUT ==========
-        function fazerLogout() {
-            console.log('🚪 Logout acionado!');
-            isLogado = false;
+        // LOGOUT
+        function logout() {
             document.getElementById('authScreen').style.display = 'block';
             document.getElementById('appScreen').style.display = 'none';
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
+            document.getElementById('email').value = 'MoratoFamily';
+            document.getElementById('senha').value = 'LuccaMatteo';
+            document.getElementById('msgErro').style.display = 'none';
         }
 
-        // ========== MOSTRAR ERRO ==========
-        function mostrarErroAuth(mensagem) {
-            const errorDiv = document.getElementById('authError');
-            errorDiv.innerHTML = mensagem;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
+        // CARREGAR TRANSAÇÕES
+        function carregarTransacoes() {
+            db.collection('transacoes').orderBy('data', 'desc').onSnapshot((snap) => {
+                transacoes = [];
+                snap.forEach(doc => {
+                    transacoes.push({ id: doc.id, ...doc.data() });
+                });
+                atualizarTabela();
+                atualizarKPIs();
+            });
         }
 
-        // ========== CARREGAR FIREBASE ==========
-        async function carregarDadosDoFirebase() {
-            try {
-                console.log('📥 Carregando configurações do Firebase...');
-                const configDoc = await db.collection('configuracoes').doc('geral').get();
-                if (configDoc.exists) {
-                    const data = configDoc.data();
-                    configuracoes.usdRate = data.usdRate || 5.00;
-                    configuracoes.monthlyRate = data.monthlyRate || 1.00;
-                    configuracoes.targetGoal = data.targetGoal || 112000;
-                    console.log('✅ Configurações carregadas');
-                }
+        // ATUALIZAR TABELA
+        function atualizarTabela() {
+            const tbody = document.getElementById('tabelaTransacoes');
+            tbody.innerHTML = '';
 
-                document.getElementById('usdRate').value = configuracoes.usdRate;
-                document.getElementById('monthlyRate').value = configuracoes.monthlyRate;
-                document.getElementById('targetGoal').value = configuracoes.targetGoal;
-
-                // Sincronizar transações em tempo real
-                console.log('📊 Carregando transações...');
-                db.collection('transacoes')
-                    .orderBy('data', 'desc')
-                    .onSnapshot((snapshot) => {
-                        transacoes = [];
-                        snapshot.forEach((doc) => {
-                            transacoes.push({
-                                id: doc.id,
-                                ...doc.data()
-                            });
-                        });
-                        console.log('✅', transacoes.length, 'transações carregadas');
-                        atualizar();
-                    });
-            } catch (error) {
-                console.error('❌ Erro ao carregar:', error);
+            if (transacoes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma transação</td></tr>';
+                return;
             }
+
+            transacoes.forEach(t => {
+                const data = new Date(t.data).toLocaleDateString('pt-BR');
+                const moeda = t.moeda === 'USD' ? 'US$' : 'R$';
+                
+                let cor = 'success';
+                if (t.tipo === 'despesa') cor = 'danger';
+                if (t.tipo === 'investimento') cor = 'info';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${data}</td>
+                        <td><span class="badge bg-${cor}">${t.tipo}</span></td>
+                        <td>${t.descricao}</td>
+                        <td>${moeda} ${t.valor.toFixed(2)}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="deletar('${t.id}')">Del</button></td>
+                    </tr>
+                `;
+            });
         }
 
-        // ========== ADICIONAR RECEITA ==========
-        async function adicionarReceita() {
+        // ATUALIZAR KPIs
+        function atualizarKPIs() {
+            let patrimonio = 0;
+            transacoes.forEach(t => {
+                if (t.tipo === 'receita' || t.tipo === 'investimento') {
+                    patrimonio += t.valor;
+                } else if (t.tipo === 'despesa') {
+                    patrimonio -= t.valor;
+                }
+            });
+
+            document.getElementById('totalPatrimonio').textContent = 'R$ ' + patrimonio.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // SALVAR RECEITA
+        function salvarReceita() {
             const data = document.getElementById('receitaData').value;
-            const categoria = document.getElementById('receitaCategoria').value;
-            const descricao = document.getElementById('receitaDescricao').value;
+            const desc = document.getElementById('receitaDesc').value;
             const valor = parseFloat(document.getElementById('receitaValor').value);
 
-            if (!data || !descricao || !valor) {
+            if (!data || !desc || !valor) {
                 alert('Preencha todos os campos!');
                 return;
             }
 
-            try {
-                await db.collection('transacoes').add({
-                    data, tipo: 'receita', categoria, descricao, valor,
-                    moeda: 'BRL', dataCriacao: new Date(), dataAtualizacao: new Date()
-                });
-
-                bootstrap.Modal.getInstance(document.getElementById('receitaModal')).hide();
+            db.collection('transacoes').add({
+                data, tipo: 'receita', descricao: desc, valor, moeda: 'BRL', dataCriacao: new Date()
+            }).then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('modalReceita')).hide();
                 document.getElementById('receitaData').value = '';
-                document.getElementById('receitaDescricao').value = '';
+                document.getElementById('receitaDesc').value = '';
                 document.getElementById('receitaValor').value = '';
                 alert('✅ Receita adicionada!');
-            } catch (error) {
-                alert('❌ Erro: ' + error.message);
-            }
+            }).catch(err => alert('Erro: ' + err));
         }
 
-        // ========== ADICIONAR DESPESA ==========
-        async function adicionarDespesa() {
+        // SALVAR DESPESA
+        function salvarDespesa() {
             const data = document.getElementById('despesaData').value;
-            const categoria = document.getElementById('despesaCategoria').value;
-            const descricao = document.getElementById('despesaDescricao').value;
+            const desc = document.getElementById('despesaDesc').value;
             const valor = parseFloat(document.getElementById('despesaValor').value);
 
-            if (!data || !descricao || !valor) {
+            if (!data || !desc || !valor) {
                 alert('Preencha todos os campos!');
                 return;
             }
 
-            try {
-                await db.collection('transacoes').add({
-                    data, tipo: 'despesa', categoria, descricao, valor,
-                    moeda: 'BRL', dataCriacao: new Date(), dataAtualizacao: new Date()
-                });
-
-                bootstrap.Modal.getInstance(document.getElementById('despesaModal')).hide();
+            db.collection('transacoes').add({
+                data, tipo: 'despesa', descricao: desc, valor, moeda: 'BRL', dataCriacao: new Date()
+            }).then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('modalDespesa')).hide();
                 document.getElementById('despesaData').value = '';
-                document.getElementById('despesaDescricao').value = '';
+                document.getElementById('despesaDesc').value = '';
                 document.getElementById('despesaValor').value = '';
                 alert('✅ Despesa adicionada!');
-            } catch (error) {
-                alert('❌ Erro: ' + error.message);
-            }
+            }).catch(err => alert('Erro: ' + err));
         }
 
-        // ========== ADICIONAR INVESTIMENTO ==========
-        async function adicionarInvestimento() {
-            const data = document.getElementById('investimentoData').value;
-            const tipo = document.getElementById('investimentoTipo').value;
-            const moeda = document.getElementById('investimentoMoeda').value;
-            const valor = parseFloat(document.getElementById('investimentoValor').value);
+        // SALVAR INVESTIMENTO
+        function salvarInvestimento() {
+            const data = document.getElementById('investData').value;
+            const tipo = document.getElementById('investTipo').value;
+            const moeda = document.getElementById('investMoeda').value;
+            const valor = parseFloat(document.getElementById('investValor').value);
 
             if (!data || !valor) {
                 alert('Preencha todos os campos!');
                 return;
             }
 
-            try {
-                await db.collection('transacoes').add({
-                    data, tipo: 'investimento', categoria: tipo, descricao: tipo, valor, moeda,
-                    dataCriacao: new Date(), dataAtualizacao: new Date()
-                });
-
-                bootstrap.Modal.getInstance(document.getElementById('investimentoModal')).hide();
-                document.getElementById('investimentoData').value = '';
-                document.getElementById('investimentoValor').value = '';
+            db.collection('transacoes').add({
+                data, tipo: 'investimento', descricao: tipo, valor, moeda, dataCriacao: new Date()
+            }).then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('modalInvestimento')).hide();
+                document.getElementById('investData').value = '';
+                document.getElementById('investValor').value = '';
                 alert('✅ Investimento adicionado!');
-            } catch (error) {
-                alert('❌ Erro: ' + error.message);
-            }
+            }).catch(err => alert('Erro: ' + err));
         }
 
-        // ========== DELETAR ==========
-        function deletarTransacao(id) {
-            if (confirm('Tem certeza que deseja deletar?')) {
+        // DELETAR
+        function deletar(id) {
+            if (confirm('Deletar transação?')) {
                 db.collection('transacoes').doc(id).delete().then(() => {
                     alert('✅ Deletado!');
-                }).catch((err) => {
-                    alert('❌ Erro: ' + err.message);
-                });
+                }).catch(err => alert('Erro: ' + err));
             }
         }
 
-        // ========== CÁLCULOS ==========
-        function calcularPatrimonio() {
-            let patrimonio = 0;
-            transacoes.forEach(t => {
-                let valor = t.valor;
-                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
-                if (t.tipo === 'receita' || t.tipo === 'investimento') patrimonio += valor;
-                else if (t.tipo === 'despesa') patrimonio -= valor;
-            });
-            return patrimonio;
-        }
-
-        function getMesAtual() {
-            const hoje = new Date();
-            return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-        }
-
-        function calcularReceitasMes() {
-            const mesAtual = getMesAtual();
-            return transacoes
-                .filter(t => t.tipo === 'receita' && t.data.startsWith(mesAtual))
-                .reduce((sum, t) => sum + t.valor, 0);
-        }
-
-        function calcularDespesasMes() {
-            const mesAtual = getMesAtual();
-            return transacoes
-                .filter(t => t.tipo === 'despesa' && t.data.startsWith(mesAtual))
-                .reduce((sum, t) => sum + t.valor, 0);
-        }
-
-        function formatarMoeda(valor) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-        }
-
-        function formatarData(data) {
-            return new Intl.DateTimeFormat('pt-BR').format(new Date(data));
-        }
-
-        // ========== ATUALIZAR KPIs ==========
-        function atualizarKPIs() {
-            const patrimonio = calcularPatrimonio();
-            const receitas = calcularReceitasMes();
-            const despesas = calcularDespesasMes();
-
-            document.getElementById('totalPatrimonio').textContent = formatarMoeda(patrimonio);
-            document.getElementById('totalReceitas').textContent = formatarMoeda(receitas);
-            document.getElementById('totalDespesas').textContent = formatarMoeda(despesas);
-            document.getElementById('metaGoal').textContent = formatarMoeda(configuracoes.targetGoal);
-        }
-
-        // ========== ATUALIZAR TABELA ==========
-        function atualizarTabela() {
-            const tbody = document.getElementById('transactionsTable');
-            tbody.innerHTML = '';
-
-            if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação registrada</td></tr>';
-                return;
-            }
-
-            transacoes.forEach(t => {
-                let valor = t.valor;
-                let moedaDisplay = t.moeda === 'USD' ? 'US$' : 'R$';
-                let tipoClass = t.tipo === 'receita' ? 'badge-receita' : t.tipo === 'despesa' ? 'badge-despesa' : 'badge-investimento';
-                let tipoDisplay = t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1);
-
-                const row = `
-                    <tr>
-                        <td>${formatarData(t.data)}</td>
-                        <td><span class="badge ${tipoClass}">${tipoDisplay}</span></td>
-                        <td>${t.categoria}</td>
-                        <td>${t.descricao}</td>
-                        <td>${moedaDisplay} ${valor.toFixed(2)}</td>
-                        <td><button class="btn-delete" onclick="deletarTransacao('${t.id}')">Deletar</button></td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-        }
-
-        // ========== INICIALIZAR DATAS ==========
-        function inicializarDatas() {
+        // ABRIR MODAIS
+        function abrirModalReceita() {
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('receitaData').value = hoje;
+            new bootstrap.Modal(document.getElementById('modalReceita')).show();
+        }
+
+        function abrirModalDespesa() {
+            const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('despesaData').value = hoje;
-            document.getElementById('investimentoData').value = hoje;
+            new bootstrap.Modal(document.getElementById('modalDespesa')).show();
         }
 
-        // ========== GRÁFICOS ==========
-        function atualizarGraficoPatrimonio() {
-            const ctx = document.getElementById('patrimonioChart');
-            if (!ctx) return;
-
-            const dados = {};
-            transacoes.forEach(t => {
-                if (!dados[t.data]) dados[t.data] = 0;
-                let valor = t.valor;
-                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
-                if (t.tipo === 'receita' || t.tipo === 'investimento') dados[t.data] += valor;
-                else if (t.tipo === 'despesa') dados[t.data] -= valor;
-            });
-
-            const datas = Object.keys(dados).sort();
-            let patrimonio = 0;
-            const valores = datas.map(data => { patrimonio += dados[data]; return patrimonio; });
-
-            if (patrimonioChart) patrimonioChart.destroy();
-
-            patrimonioChart = new Chart(ctx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: datas.map(d => formatarData(d)),
-                    datasets: [{
-                        label: 'Patrimônio',
-                        data: valores,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#667eea',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
-                }
-            });
+        function abrirModalInvestimento() {
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('investData').value = hoje;
+            new bootstrap.Modal(document.getElementById('modalInvestimento')).show();
         }
 
-        function atualizarGraficoProjecao() {
-            const ctx = document.getElementById('projecaoChart');
-            if (!ctx) return;
-
-            const patrimonioAtual = calcularPatrimonio();
-            const anosProjecao = [];
-            const valoresProjecao = [];
-
-            for (let ano = 2026; ano <= 2030; ano++) {
-                const mesesPassados = (ano - 2026) * 12;
-                const monthlyRate = configuracoes.monthlyRate / 100;
-                let valor = patrimonioAtual;
-                for (let mes = 0; mes < mesesPassados; mes++) {
-                    valor = valor * (1 + monthlyRate) + 1300;
-                }
-                anosProjecao.push(ano.toString());
-                valoresProjecao.push(Math.round(valor));
+        // PERMITIR ENTER NO LOGIN
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && document.getElementById('authScreen').style.display !== 'none') {
+                login();
             }
+        });
 
-            if (projecaoChart) projecaoChart.destroy();
-
-            projecaoChart = new Chart(ctx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: anosProjecao,
-                    datasets: [{
-                        label: 'Patrimônio Projetado',
-                        data: valoresProjecao,
-                        backgroundColor: ['rgba(102, 126, 234, 0.8)', 'rgba(118, 75, 162, 0.8)', 'rgba(245, 87, 108, 0.8)', 'rgba(240, 147, 251, 0.8)', 'rgba(67, 233, 123, 0.8)'],
-                        borderRadius: 10,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
-                }
-            });
-        }
-
-        function atualizarGraficoCategoria() {
-            const ctx = document.getElementById('categoriaChart');
-            if (!ctx) return;
-
-            const categorias = {};
-            transacoes.forEach(t => {
-                if (!categorias[t.categoria]) categorias[t.categoria] = 0;
-                let valor = t.valor;
-                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
-                if (t.tipo === 'receita' || t.tipo === 'investimento') categorias[t.categoria] += valor;
-            });
-
-            const cores = ['#667eea', '#764ba2', '#f5576c', '#f093fb', '#43e97b', '#38f9d7', '#4facfe', '#00f2fe', '#f5af19', '#ff6b6b'];
-
-            if (categoriaChart) categoriaChart.destroy();
-            if (Object.keys(categorias).length === 0) return;
-
-            categoriaChart = new Chart(ctx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(categorias),
-                    datasets: [{ data: Object.values(categorias), backgroundColor: cores.slice(0, Object.keys(categorias).length) }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        }
-
-        function atualizarGraficoReceitaDespesa() {
-            const ctx = document.getElementById('receitaDespesaChart');
-            if (!ctx) return;
-
-            const meses = {};
-            transacoes.forEach(t => {
-                const mesChave = t.data.substring(0, 7);
-                if (!meses[mesChave]) meses[mesChave] = { receita: 0, despesa: 0 };
-                let valor = t.valor;
-                if (t.moeda === 'USD') valor = valor * configuracoes.usdRate;
-                if (t.tipo === 'receita' || t.tipo === 'investimento') meses[mesChave].receita += valor;
-                else if (t.tipo === 'despesa') meses[mesChave].despesa += valor;
-            });
-
-            const mesesOrdenados = Object.keys(meses).sort();
-            const receitas = mesesOrdenados.map(m => meses[m].receita);
-            const despesas = mesesOrdenados.map(m => meses[m].despesa);
-
-            if (receitaDespesaChart) receitaDespesaChart.destroy();
-
-            receitaDespesaChart = new Chart(ctx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: mesesOrdenados.map(m => m.replace('-', '/')),
-                    datasets: [
-                        { label: 'Receitas', data: receitas, backgroundColor: 'rgba(67, 233, 123, 0.8)', borderRadius: 8 },
-                        { label: 'Despesas', data: despesas, backgroundColor: 'rgba(245, 87, 108, 0.8)', borderRadius: 8 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
-                }
-            });
-        }
-
-        // ========== SALVAR CONFIG ==========
-        async function salvarConfigurações() {
-            const usdRate = parseFloat(document.getElementById('usdRate').value);
-            const monthlyRate = parseFloat(document.getElementById('monthlyRate').value);
-            const targetGoal = parseFloat(document.getElementById('targetGoal').value);
-
-            if (!usdRate || !monthlyRate || !targetGoal) {
-                alert('Preencha todos os campos!');
-                return;
-            }
-
-            try {
-                await db.collection('configuracoes').doc('geral').set({
-                    usdRate, monthlyRate, targetGoal, ultimaAtualizacao: new Date()
-                });
-
-                configuracoes = { usdRate, monthlyRate, targetGoal };
-                bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-                alert('✅ Configurações salvas!');
-                atualizar();
-            } catch (error) {
-                alert('❌ Erro: ' + error.message);
-            }
-        }
-
-        // ========== ATUALIZAR TUDO ==========
-        function atualizar() {
-            atualizarKPIs();
-            atualizarTabela();
-            atualizarGraficoPatrimonio();
-            atualizarGraficoProjecao();
-            atualizarGraficoCategoria();
-            atualizarGraficoReceitaDespesa();
-        }
-
-        // ========== INICIALIZAR EVENTOS ==========
-        function inicializarEventos() {
-            console.log('🔌 Inicializando eventos...');
-
-            // Login
-            const btnLogin = document.getElementById('btnLogin');
-            if (btnLogin) {
-                btnLogin.addEventListener('click', fazerLogin);
-                console.log('✅ Evento Login adicionado');
-            }
-
-            // Enter no input de senha
-            const loginPassword = document.getElementById('loginPassword');
-            if (loginPassword) {
-                loginPassword.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        fazerLogin();
-                    }
-                });
-                console.log('✅ Enter na senha configurado');
-            }
-
-            // Logout
-            const btnLogout = document.getElementById('btnLogout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', fazerLogout);
-                console.log('✅ Evento Logout adicionado');
-            }
-
-            // Receita
-            const btnAdicionarReceita = document.getElementById('btnAdicionarReceita');
-            if (btnAdicionarReceita) {
-                btnAdicionarReceita.addEventListener('click', adicionarReceita);
-                console.log('✅ Evento Receita adicionado');
-            }
-
-            // Despesa
-            const btnAdicionarDespesa = document.getElementById('btnAdicionarDespesa');
-            if (btnAdicionarDespesa) {
-                btnAdicionarDespesa.addEventListener('click', adicionarDespesa);
-                console.log('✅ Evento Despesa adicionado');
-            }
-
-            // Investimento
-            const btnAdicionarInvestimento = document.getElementById('btnAdicionarInvestimento');
-            if (btnAdicionarInvestimento) {
-                btnAdicionarInvestimento.addEventListener('click', adicionarInvestimento);
-                console.log('✅ Evento Investimento adicionado');
-            }
-
-            // Config
-            const btnSalvarConfig = document.getElementById('btnSalvarConfig');
-            if (btnSalvarConfig) {
-                btnSalvarConfig.addEventListener('click', salvarConfigurações);
-                console.log('✅ Evento Config adicionado');
-            }
-
-            console.log('✅ Todos os eventos configurados!');
-        }
-
-        // ========== QUANDO DOM ESTIVER PRONTO ==========
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarEventos);
-        } else {
-            inicializarEventos();
-        }
-
-        console.log('✅ Dashboard carregado com sucesso!');
-        console.log('📝 Credenciais: MoratoFamily / LuccaMatteo');
+        console.log('✅ Dashboard pronto!');
     </script>
 </body>
 </html>
