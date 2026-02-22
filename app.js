@@ -1,17 +1,5 @@
-import { db } from './config.js';
-import { 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  setDoc,
-  query,
-  orderBy,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
 // Adicionar Receita
-window.adicionarReceita = async function() {
+async function adicionarReceita() {
   const data = document.getElementById('receitaData').value;
   const categoria = document.getElementById('receitaCategoria').value;
   const descricao = document.getElementById('receitaDescricao').value;
@@ -23,15 +11,15 @@ window.adicionarReceita = async function() {
   }
 
   try {
-    await addDoc(collection(db, 'transacoes'), {
+    await db.collection('transacoes').add({
       data: data,
       tipo: 'receita',
       categoria: categoria,
       descricao: descricao,
       valor: valor,
       moeda: 'BRL',
-      usuarioId: window.usuarioAtual.uid,
-      usuarioEmail: window.usuarioAtual.email,
+      usuarioId: usuarioAtual.uid,
+      usuarioEmail: usuarioAtual.email,
       dataCriacao: new Date(),
       dataAtualizacao: new Date()
     });
@@ -42,13 +30,15 @@ window.adicionarReceita = async function() {
     document.getElementById('receitaData').value = '';
     document.getElementById('receitaDescricao').value = '';
     document.getElementById('receitaValor').value = '';
+    
+    alert('Receita adicionada com sucesso!');
   } catch (error) {
     alert('Erro ao adicionar receita: ' + error.message);
   }
-};
+}
 
 // Adicionar Despesa
-window.adicionarDespesa = async function() {
+async function adicionarDespesa() {
   const data = document.getElementById('despesaData').value;
   const categoria = document.getElementById('despesaCategoria').value;
   const descricao = document.getElementById('despesaDescricao').value;
@@ -60,15 +50,15 @@ window.adicionarDespesa = async function() {
   }
 
   try {
-    await addDoc(collection(db, 'transacoes'), {
+    await db.collection('transacoes').add({
       data: data,
       tipo: 'despesa',
       categoria: categoria,
       descricao: descricao,
       valor: valor,
       moeda: 'BRL',
-      usuarioId: window.usuarioAtual.uid,
-      usuarioEmail: window.usuarioAtual.email,
+      usuarioId: usuarioAtual.uid,
+      usuarioEmail: usuarioAtual.email,
       dataCriacao: new Date(),
       dataAtualizacao: new Date()
     });
@@ -79,13 +69,15 @@ window.adicionarDespesa = async function() {
     document.getElementById('despesaData').value = '';
     document.getElementById('despesaDescricao').value = '';
     document.getElementById('despesaValor').value = '';
+    
+    alert('Despesa adicionada com sucesso!');
   } catch (error) {
     alert('Erro ao adicionar despesa: ' + error.message);
   }
-};
+}
 
 // Adicionar Investimento
-window.adicionarInvestimento = async function() {
+async function adicionarInvestimento() {
   const data = document.getElementById('investimentoData').value;
   const tipo = document.getElementById('investimentoTipo').value;
   const moeda = document.getElementById('investimentoMoeda').value;
@@ -97,15 +89,15 @@ window.adicionarInvestimento = async function() {
   }
 
   try {
-    await addDoc(collection(db, 'transacoes'), {
+    await db.collection('transacoes').add({
       data: data,
       tipo: 'investimento',
       categoria: tipo,
       descricao: tipo,
       valor: valor,
       moeda: moeda,
-      usuarioId: window.usuarioAtual.uid,
-      usuarioEmail: window.usuarioAtual.email,
+      usuarioId: usuarioAtual.uid,
+      usuarioEmail: usuarioAtual.email,
       dataCriacao: new Date(),
       dataAtualizacao: new Date()
     });
@@ -115,31 +107,34 @@ window.adicionarInvestimento = async function() {
 
     document.getElementById('investimentoData').value = '';
     document.getElementById('investimentoValor').value = '';
+    
+    alert('Investimento adicionado com sucesso!');
   } catch (error) {
     alert('Erro ao adicionar investimento: ' + error.message);
   }
-};
+}
 
 // Deletar transação
-window.deletarTransacao = async function(id) {
+async function deletarTransacao(id) {
   if (confirm('Tem certeza que deseja deletar esta transação?')) {
     try {
-      await deleteDoc(doc(db, 'transacoes', id));
+      await db.collection('transacoes').doc(id).delete();
+      alert('Transação deletada com sucesso!');
     } catch (error) {
       alert('Erro ao deletar: ' + error.message);
     }
   }
-};
+}
 
 // Calcular Patrimônio
 function calcularPatrimonio() {
   let patrimonio = 0;
 
-  window.transacoes.forEach(t => {
+  transacoes.forEach(t => {
     let valor = t.valor;
 
     if (t.moeda === 'USD') {
-      valor = valor * window.configuracoes.usdRate;
+      valor = valor * configuracoes.usdRate;
     }
 
     if (t.tipo === 'receita' || t.tipo === 'investimento') {
@@ -161,7 +156,7 @@ function getMesAtual() {
 // Calcular receitas do mês
 function calcularReceitasMes() {
   const mesAtual = getMesAtual();
-  return window.transacoes
+  return transacoes
     .filter(t => t.tipo === 'receita' && t.data.startsWith(mesAtual))
     .reduce((sum, t) => sum + t.valor, 0);
 }
@@ -169,7 +164,7 @@ function calcularReceitasMes() {
 // Calcular despesas do mês
 function calcularDespesasMes() {
   const mesAtual = getMesAtual();
-  return window.transacoes
+  return transacoes
     .filter(t => t.tipo === 'despesa' && t.data.startsWith(mesAtual))
     .reduce((sum, t) => sum + t.valor, 0);
 }
@@ -183,7 +178,7 @@ function atualizarKPIs() {
   document.getElementById('totalPatrimonio').textContent = formatarMoeda(patrimonio);
   document.getElementById('totalReceitas').textContent = formatarMoeda(receitas);
   document.getElementById('totalDespesas').textContent = formatarMoeda(despesas);
-  document.getElementById('metaGoal').textContent = formatarMoeda(window.configuracoes.targetGoal);
+  document.getElementById('metaGoal').textContent = formatarMoeda(configuracoes.targetGoal);
 }
 
 // Formatar moeda
@@ -199,7 +194,7 @@ function atualizarTabela() {
   const tbody = document.getElementById('transactionsTable');
   tbody.innerHTML = '';
 
-  window.transacoes.forEach(t => {
+  transacoes.forEach(t => {
     let valor = t.valor;
     let moedaDisplay = 'R$';
 
@@ -231,12 +226,12 @@ function formatarData(data) {
 }
 
 // Inicializar datas
-window.inicializarDatas = function() {
+function inicializarDatas() {
   const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('receitaData').value = hoje;
   document.getElementById('despesaData').value = hoje;
   document.getElementById('investimentoData').value = hoje;
-};
+}
 
 // Gráficos
 let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
@@ -247,14 +242,14 @@ function atualizarGraficoPatrimonio() {
   
   const dados = {};
 
-  window.transacoes.forEach(t => {
+  transacoes.forEach(t => {
     if (!dados[t.data]) {
       dados[t.data] = 0;
     }
 
     let valor = t.valor;
     if (t.moeda === 'USD') {
-      valor = valor * window.configuracoes.usdRate;
+      valor = valor * configuracoes.usdRate;
     }
 
     if (t.tipo === 'receita' || t.tipo === 'investimento') {
@@ -323,7 +318,7 @@ function atualizarGraficoProjecao() {
 
   for (let ano = 2026; ano <= 2030; ano++) {
     const mesesPassados = (ano - 2026) * 12;
-    const monthlyRate = window.configuracoes.monthlyRate / 100;
+    const monthlyRate = configuracoes.monthlyRate / 100;
     const aporte = 1300;
     
     let valor = patrimonioAtual;
@@ -383,14 +378,14 @@ function atualizarGraficoCategoria() {
 
   const categorias = {};
 
-  window.transacoes.forEach(t => {
+  transacoes.forEach(t => {
     if (!categorias[t.categoria]) {
       categorias[t.categoria] = 0;
     }
 
     let valor = t.valor;
     if (t.moeda === 'USD') {
-      valor = valor * window.configuracoes.usdRate;
+      valor = valor * configuracoes.usdRate;
     }
 
     if (t.tipo === 'receita' || t.tipo === 'investimento') {
@@ -432,7 +427,7 @@ function atualizarGraficoReceitaDespesa() {
 
   const meses = {};
 
-  window.transacoes.forEach(t => {
+  transacoes.forEach(t => {
     const mesChave = t.data.substring(0, 7);
     if (!meses[mesChave]) {
       meses[mesChave] = { receita: 0, despesa: 0 };
@@ -440,7 +435,7 @@ function atualizarGraficoReceitaDespesa() {
 
     let valor = t.valor;
     if (t.moeda === 'USD') {
-      valor = valor * window.configuracoes.usdRate;
+      valor = valor * configuracoes.usdRate;
     }
 
     if (t.tipo === 'receita' || t.tipo === 'investimento') {
@@ -498,7 +493,7 @@ function atualizarGraficoReceitaDespesa() {
 }
 
 // Salvar configurações
-window.salvarConfigurações = async function() {
+async function salvarConfigurações() {
   const usdRate = parseFloat(document.getElementById('usdRate').value);
   const monthlyRate = parseFloat(document.getElementById('monthlyRate').value);
   const targetGoal = parseFloat(document.getElementById('targetGoal').value);
@@ -509,16 +504,16 @@ window.salvarConfigurações = async function() {
   }
 
   try {
-    await setDoc(doc(db, 'configuracoes', 'geral'), {
+    await db.collection('configuracoes').doc('geral').set({
       usdRate: usdRate,
       monthlyRate: monthlyRate,
       targetGoal: targetGoal,
       ultimaAtualizacao: new Date()
     });
 
-    window.configuracoes.usdRate = usdRate;
-    window.configuracoes.monthlyRate = monthlyRate;
-    window.configuracoes.targetGoal = targetGoal;
+    configuracoes.usdRate = usdRate;
+    configuracoes.monthlyRate = monthlyRate;
+    configuracoes.targetGoal = targetGoal;
 
     alert('Configurações salvas com sucesso!');
     const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
@@ -527,14 +522,14 @@ window.salvarConfigurações = async function() {
   } catch (error) {
     alert('Erro ao salvar: ' + error.message);
   }
-};
+}
 
 // Atualizar tudo
-window.atualizar = function() {
+function atualizar() {
   atualizarKPIs();
   atualizarTabela();
   atualizarGraficoPatrimonio();
   atualizarGraficoProjecao();
   atualizarGraficoCategoria();
   atualizarGraficoReceitaDespesa();
-};
+}
