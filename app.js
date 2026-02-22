@@ -124,11 +124,9 @@ function adicionarInvestimento() {
 }
 
 // Deletar transação
-function deletarTransacao(id) {
+async function deletarTransacao(id) {
     if (confirm('Tem certeza que deseja deletar esta transação?')) {
-        app.transactions = app.transactions.filter(t => t.id !== id);
-        salvarDados();
-        atualizar();
+        await deleteDoc(doc(db, "transactions", id));
     }
 }
 
