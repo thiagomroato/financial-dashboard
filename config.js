@@ -1,45 +1,74 @@
 console.log('⚙️ config.js carregando...');
 
-// Verificar se Firebase foi carregado
-if (typeof firebase === 'undefined') {
-  console.error('❌ Firebase não foi carregado!');
-} else {
-  console.log('✅ Firebase SDK carregado');
+// Aguardar Firebase SDK ser carregado
+function esperarFirebase() {
+  return new Promise((resolve) => {
+    if (typeof firebase !== 'undefined') {
+      console.log('✅ Firebase SDK já carregado');
+      resolve();
+    } else {
+      console.log('⏳ Aguardando Firebase SDK...');
+      let tentativas = 0;
+      const intervalo = setInterval(() => {
+        tentativas++;
+        if (typeof firebase !== 'undefined') {
+          console.log('✅ Firebase SDK carregado após ' + tentativas + ' tentativas');
+          clearInterval(intervalo);
+          resolve();
+        }
+        if (tentativas > 100) {
+          console.error('❌ Firebase SDK não carregou!');
+          clearInterval(intervalo);
+          resolve();
+        }
+      }, 50);
+    }
+  });
 }
 
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
-  authDomain: "financial-dashboard-a2b16.firebaseapp.com",
-  projectId: "financial-dashboard-a2b16",
-  storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
-  messagingSenderId: "538205467615",
-  appId: "1:538205467615:web:24326fa7f323902059ca6a",
-  measurementId: "G-6JXMBQH9G1"
-};
+// Aguardar e depois inicializar
+esperarFirebase().then(() => {
+  console.log('✅ Iniciando Firebase...');
 
-// Inicializar Firebase
-try {
-  const app = firebase.initializeApp(firebaseConfig);
-  console.log('✅ Firebase app inicializado');
-} catch (error) {
-  console.error('❌ Erro ao inicializar Firebase:', error);
-}
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
+    authDomain: "financial-dashboard-a2b16.firebaseapp.com",
+    projectId: "financial-dashboard-a2b16",
+    storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
+    messagingSenderId: "538205467615",
+    appId: "1:538205467615:web:24326fa7f323902059ca6a",
+    measurementId: "G-6JXMBQH9G1"
+  };
 
-// Obter referências GLOBAIS
-const auth = firebase.auth();
-const db = firebase.firestore();
+  try {
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    console.log('✅ Firebase app inicializado');
 
-console.log('✅ Auth e Firestore obtidos');
-console.log('✅ config.js carregado com sucesso!');
+    // Obter referências GLOBAIS
+    window.auth = firebase.auth();
+    window.db = firebase.firestore();
+
+    console.log('✅ Auth:', window.auth);
+    console.log('✅ Firestore:', window.db);
+
+    // Disparar evento customizado para avisar que Firebase está pronto
+    window.dispatchEvent(new CustomEvent('firebaseReady'));
+    console.log('✅ Evento firebaseReady disparado');
+
+  } catch (error) {
+    console.error('❌ Erro ao inicializar Firebase:', error);
+  }
+});
 
 // Variáveis globais
-let usuarioAtual = null;
-let configuracoes = {
+window.usuarioAtual = null;
+window.configuracoes = {
   usdRate: 5.00,
   monthlyRate: 1.00,
   targetGoal: 112000
 };
-let transacoes = [];
+window.transacoes = [];
 
-console.log('✅ Variáveis globais inicializadas');
+console.log('✅ config.js terminado de carregar');
