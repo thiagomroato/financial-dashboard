@@ -13,21 +13,18 @@ const defaultData = {
 
 // Inicializar dados
 let app = {
-    transactions: [],
+    transactions: JSON.parse(localStorage.getItem('transactions')) || defaultData.transactions,
     settings: JSON.parse(localStorage.getItem('settings')) || defaultData.settings
 };
 
 // Salvar dados
 function salvarDados() {
-    async function salvarTransacaoFirebase(transacao){
-    await addDoc(collection(db, "transactions"), transacao);
-}
+    localStorage.setItem('transactions', JSON.stringify(app.transactions));
     localStorage.setItem('settings', JSON.stringify(app.settings));
 }
 
 // Adicionar Receita
-async function adicionarReceita() {
-
+function adicionarReceita() {
     const data = document.getElementById('receitaData').value;
     const categoria = document.getElementById('receitaCategoria').value;
     const descricao = document.getElementById('receitaDescricao').value;
@@ -39,6 +36,7 @@ async function adicionarReceita() {
     }
 
     const novaReceita = {
+        id: Date.now(),
         data: data,
         tipo: 'receita',
         categoria: categoria,
@@ -47,11 +45,16 @@ async function adicionarReceita() {
         moeda: 'BRL'
     };
 
-    await salvarTransacaoFirebase(novaReceita);
+    app.transactions.push(novaReceita);
+    salvarDados();
+    atualizar();
 
+    // Fechar modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('receitaModal'));
     modal.hide();
 
+    // Limpar campos
+    document.getElementById('receitaData').value = '';
     document.getElementById('receitaDescricao').value = '';
     document.getElementById('receitaValor').value = '';
 }
@@ -124,9 +127,11 @@ function adicionarInvestimento() {
 }
 
 // Deletar transação
-async function deletarTransacao(id) {
+function deletarTransacao(id) {
     if (confirm('Tem certeza que deseja deletar esta transação?')) {
-        await deleteDoc(doc(db, "transactions", id));
+        app.transactions = app.transactions.filter(t => t.id !== id);
+        salvarDados();
+        atualizar();
     }
 }
 
@@ -545,24 +550,9 @@ function atualizar() {
 
 // Inicializar
 window.addEventListener('DOMContentLoaded', () => {
-
     inicializarDatas();
-
     document.getElementById('usdRate').value = app.settings.usdRate;
     document.getElementById('monthlyRate').value = app.settings.monthlyRate;
     document.getElementById('targetGoal').value = app.settings.targetGoal;
-
-    // 🔥 Escuta em tempo real do Firestore
-    onSnapshot(collection(db, "transactions"), (snapshot) => {
-        app.transactions = [];
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            data.id = doc.id; // importante para deletar depois
-            app.transactions.push(data);
-        });
-
-        atualizar();
-    });
-
+    atualizar();
 });
