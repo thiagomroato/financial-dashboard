@@ -1,12 +1,12 @@
 // Suas credenciais Firebase
 // ⚠️ SUBSTITUA COM SUAS CREDENCIAIS DO FIREBASE CONSOLE
 const firebaseConfig = {
-    apiKey: "SEU_API_KEY",
-    authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-    projectId: "SEU_PROJECT_ID",
-    storageBucket: "SEU_PROJECT_ID.appspot.com",
-    messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-    appId: "SEU_APP_ID"
+  apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
+  authDomain: "financial-dashboard-a2b16.firebaseapp.com",
+  projectId: "financial-dashboard-a2b16",
+  storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
+  messagingSenderId: "538205467615",
+  appId: "1:538205467615:web:24326fa7f323902059ca6a",
 };
 
 // Inicializar Firebase
