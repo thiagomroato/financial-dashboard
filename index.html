@@ -78,6 +78,10 @@
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
 
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
         .app-screen {
             background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -177,7 +181,6 @@
         .btn-acao-receita:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(67, 233, 123, 0.4);
-            color: white;
         }
 
         .btn-acao-despesa {
@@ -187,7 +190,6 @@
         .btn-acao-despesa:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
-            color: white;
         }
 
         .btn-acao-investimento {
@@ -197,7 +199,6 @@
         .btn-acao-investimento:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
-            color: white;
         }
 
         .table-container {
@@ -265,11 +266,11 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            color: white;
         }
 
         .btn-salvar-receita {
             background: #28a745;
-            color: white;
         }
 
         .btn-salvar-receita:hover {
@@ -278,7 +279,6 @@
 
         .btn-salvar-despesa {
             background: #dc3545;
-            color: white;
         }
 
         .btn-salvar-despesa:hover {
@@ -287,7 +287,6 @@
 
         .btn-salvar-investimento {
             background: #17a2b8;
-            color: white;
         }
 
         .btn-salvar-investimento:hover {
@@ -321,7 +320,7 @@
                 <input type="password" class="form-control" id="senha" value="LuccaMatteo">
             </div>
 
-            <button class="btn-login" id="btnEntrar">ENTRAR</button>
+            <button class="btn-login" onclick="window.fazerLogin()">ENTRAR</button>
 
             <div id="msgErro" class="alert alert-danger" style="display: none;"></div>
 
@@ -341,7 +340,7 @@
                     <h2>📊 Dashboard Financeiro 2030</h2>
                     <p id="nomeUsuario">Bem-vindo!</p>
                 </div>
-                <button class="btn-logout" id="btnSair">SAIR</button>
+                <button class="btn-logout" onclick="window.fazerLogout()">SAIR</button>
             </div>
 
             <!-- KPIs -->
@@ -366,9 +365,9 @@
 
             <!-- BOTÕES DE AÇÃO -->
             <div class="actions-buttons">
-                <button class="btn-acao btn-acao-receita" id="btnReceita">➕ RECEITA</button>
-                <button class="btn-acao btn-acao-despesa" id="btnDespesa">➖ DESPESA</button>
-                <button class="btn-acao btn-acao-investimento" id="btnInvestimento">📈 INVESTIMENTO</button>
+                <button class="btn-acao btn-acao-receita" onclick="window.abrirModalReceita()">➕ RECEITA</button>
+                <button class="btn-acao btn-acao-despesa" onclick="window.abrirModalDespesa()">➖ DESPESA</button>
+                <button class="btn-acao btn-acao-investimento" onclick="window.abrirModalInvestimento()">📈 INVESTIMENTO</button>
             </div>
 
             <!-- TABELA DE TRANSAÇÕES -->
@@ -418,7 +417,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-receita" id="btnSalvarReceita">✅ Salvar</button>
+                    <button type="button" class="btn btn-salvar btn-salvar-receita" onclick="window.salvarReceita()">✅ Salvar</button>
                 </div>
             </div>
         </div>
@@ -448,7 +447,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-despesa" id="btnSalvarDespesa">✅ Salvar</button>
+                    <button type="button" class="btn btn-salvar btn-salvar-despesa" onclick="window.salvarDespesa()">✅ Salvar</button>
                 </div>
             </div>
         </div>
@@ -489,7 +488,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-investimento" id="btnSalvarInvestimento">✅ Salvar</button>
+                    <button type="button" class="btn btn-salvar btn-salvar-investimento" onclick="window.salvarInvestimento()">✅ Salvar</button>
                 </div>
             </div>
         </div>
@@ -504,6 +503,8 @@
 
     <!-- SCRIPT APP -->
     <script>
+        console.log('🚀 APP INICIANDO...');
+
         // FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
@@ -516,62 +517,51 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        console.log('✅ FIREBASE OK');
 
         let transacoes = [];
-        let modalReceita, modalDespesa, modalInvestimento;
+        let modalReceita = null;
+        let modalDespesa = null;
+        let modalInvestimento = null;
 
-        // INICIALIZAR MODALS E EVENT LISTENERS
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ DOM CARREGADO');
-
-            // Inicializar Modals
+        // INICIALIZAR QUANDO PÁGINA CARREGA
+        window.addEventListener('load', function() {
+            console.log('✅ PÁGINA CARREGADA');
             modalReceita = new bootstrap.Modal(document.getElementById('modalReceita'));
             modalDespesa = new bootstrap.Modal(document.getElementById('modalDespesa'));
             modalInvestimento = new bootstrap.Modal(document.getElementById('modalInvestimento'));
-
-            // BOTÕES LOGIN
-            document.getElementById('btnEntrar').addEventListener('click', login);
-            document.getElementById('btnSair').addEventListener('click', logout);
-
-            // BOTÕES ABRIR MODALS
-            document.getElementById('btnReceita').addEventListener('click', abrirModalReceita);
-            document.getElementById('btnDespesa').addEventListener('click', abrirModalDespesa);
-            document.getElementById('btnInvestimento').addEventListener('click', abrirModalInvestimento);
-
-            // BOTÕES SALVAR
-            document.getElementById('btnSalvarReceita').addEventListener('click', salvarReceita);
-            document.getElementById('btnSalvarDespesa').addEventListener('click', salvarDespesa);
-            document.getElementById('btnSalvarInvestimento').addEventListener('click', salvarInvestimento);
-
-            console.log('✅ EVENTOS CONFIGURADOS');
+            console.log('✅ MODALS INICIALIZADOS');
         });
 
         // ========== LOGIN ==========
-        function login() {
-            console.log('🔑 LOGIN ACIONADO');
+        window.fazerLogin = function() {
+            console.log('🔑 FAZENDO LOGIN...');
             const email = document.getElementById('email').value.trim();
             const senha = document.getElementById('senha').value.trim();
 
+            console.log('Email:', email);
+            console.log('Senha:', senha);
+
             if (email === 'MoratoFamily' && senha === 'LuccaMatteo') {
-                console.log('✅ LOGIN CORRETO');
+                console.log('✅ LOGIN OK');
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'block';
                 document.getElementById('nomeUsuario').textContent = 'Bem-vindo, ' + email + '!';
                 carregarTransacoes();
             } else {
-                console.log('❌ LOGIN INCORRETO');
+                console.log('❌ LOGIN ERRADO');
                 document.getElementById('msgErro').style.display = 'block';
                 document.getElementById('msgErro').textContent = '❌ Usuário ou senha incorretos!';
             }
-        }
+        };
 
         // ========== LOGOUT ==========
-        function logout() {
-            console.log('🚪 LOGOUT ACIONADO');
+        window.fazerLogout = function() {
+            console.log('🚪 LOGOUT');
             document.getElementById('authScreen').style.display = 'block';
             document.getElementById('appScreen').style.display = 'none';
             transacoes = [];
-        }
+        };
 
         // ========== CARREGAR TRANSAÇÕES ==========
         function carregarTransacoes() {
@@ -581,7 +571,7 @@
                 snap.forEach(doc => {
                     transacoes.push({ id: doc.id, ...doc.data() });
                 });
-                console.log('✅ TRANSAÇÕES CARREGADAS:', transacoes.length);
+                console.log('✅', transacoes.length, 'TRANSAÇÕES');
                 atualizarTabela();
                 atualizarKPIs();
             });
@@ -601,7 +591,7 @@
                 const data = new Date(t.data).toLocaleDateString('pt-BR');
                 const moeda = t.moeda === 'USD' ? 'US$' : 'R$';
                 
-                let tipo = t.tipo;
+                let tipo = '';
                 if (t.tipo === 'receita') tipo = '<span class="badge bg-success">Receita</span>';
                 if (t.tipo === 'despesa') tipo = '<span class="badge bg-danger">Despesa</span>';
                 if (t.tipo === 'investimento') tipo = '<span class="badge bg-info">Investimento</span>';
@@ -612,7 +602,7 @@
                         <td>${tipo}</td>
                         <td>${t.descricao || t.categoria}</td>
                         <td><strong>${moeda} ${t.valor.toFixed(2)}</strong></td>
-                        <td><button class="btn-delete" onclick="deletar('${t.id}')">🗑️</button></td>
+                        <td><button class="btn-delete" onclick="window.deletar('${t.id}')">🗑️</button></td>
                     </tr>
                 `;
             });
@@ -648,34 +638,34 @@
         }
 
         // ========== ABRIR MODALS ==========
-        function abrirModalReceita() {
+        window.abrirModalReceita = function() {
             console.log('📂 ABRINDO MODAL RECEITA');
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('receitaData').value = hoje;
             document.getElementById('receitaDesc').value = '';
             document.getElementById('receitaValor').value = '';
             modalReceita.show();
-        }
+        };
 
-        function abrirModalDespesa() {
+        window.abrirModalDespesa = function() {
             console.log('📂 ABRINDO MODAL DESPESA');
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('despesaData').value = hoje;
             document.getElementById('despesaDesc').value = '';
             document.getElementById('despesaValor').value = '';
             modalDespesa.show();
-        }
+        };
 
-        function abrirModalInvestimento() {
+        window.abrirModalInvestimento = function() {
             console.log('📂 ABRINDO MODAL INVESTIMENTO');
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('investData').value = hoje;
             document.getElementById('investValor').value = '';
             modalInvestimento.show();
-        }
+        };
 
         // ========== SALVAR RECEITA ==========
-        function salvarReceita() {
+        window.salvarReceita = function() {
             console.log('💰 SALVANDO RECEITA');
             const data = document.getElementById('receitaData').value;
             const desc = document.getElementById('receitaDesc').value;
@@ -701,10 +691,10 @@
                 console.error('❌ ERRO:', err);
                 alert('❌ Erro: ' + err.message);
             });
-        }
+        };
 
         // ========== SALVAR DESPESA ==========
-        function salvarDespesa() {
+        window.salvarDespesa = function() {
             console.log('💸 SALVANDO DESPESA');
             const data = document.getElementById('despesaData').value;
             const desc = document.getElementById('despesaDesc').value;
@@ -730,10 +720,10 @@
                 console.error('❌ ERRO:', err);
                 alert('❌ Erro: ' + err.message);
             });
-        }
+        };
 
         // ========== SALVAR INVESTIMENTO ==========
-        function salvarInvestimento() {
+        window.salvarInvestimento = function() {
             console.log('📈 SALVANDO INVESTIMENTO');
             const data = document.getElementById('investData').value;
             const tipo = document.getElementById('investTipo').value;
@@ -760,10 +750,10 @@
                 console.error('❌ ERRO:', err);
                 alert('❌ Erro: ' + err.message);
             });
-        }
+        };
 
         // ========== DELETAR ==========
-        function deletar(id) {
+        window.deletar = function(id) {
             if (confirm('🗑️ Deletar?')) {
                 db.collection('transacoes').doc(id).delete().then(() => {
                     console.log('✅ DELETADO');
@@ -772,9 +762,9 @@
                     alert('❌ Erro: ' + err.message);
                 });
             }
-        }
+        };
 
-        console.log('✅ SCRIPT CARREGADO');
+        console.log('✅ APP PRONTO!');
     </script>
 </body>
 </html>
