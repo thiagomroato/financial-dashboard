@@ -305,28 +305,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-const firebaseConfig = {
-apiKey: "AIzaSyBoDq35XvBPX1LLHTfnlUfDywW26tZrXXk",
-  authDomain: "dashboard-dd159.firebaseapp.com",
-  projectId: "dashboard-dd159",
-  storageBucket: "dashboard-dd159.firebasestorage.app",
-  messagingSenderId: "710114294390",
-  appId: "1:710114294390:web:da978c139f664a80287d57",
-};
-
-const appFirebase = initializeApp(firebaseConfig);
-const db = getFirestore(appFirebase);
-
-window.db = db;
-window.collection = collection;
-window.addDoc = addDoc;
-window.getDocs = getDocs;
-window.onSnapshot = onSnapshot;
-</script>
     <script src="app.js"></script>
 </body>
 </html>
