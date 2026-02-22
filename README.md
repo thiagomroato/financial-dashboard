@@ -1,82 +1,36 @@
-# 💰 Dashboard Financeiro 2030
+# 💰 Dashboard Financeiro 2030 - Colaborativo com Firebase
 
-Um aplicativo web completo para gerenciamento financeiro pessoal com projeções até 2030.
+Um aplicativo web completo para gerenciamento financeiro compartilhado em tempo real com Firebase Firestore.
 
 ## 🎯 Funcionalidades
 
-✅ **Dashboard Interativo**
-- KPIs em tempo real (Patrimônio atual, Receitas, Despesas, Meta 2030)
-- Gráficos dinâmicos e responsivos
+✅ **Autenticação Firebase**
+- Registro com Email/Senha
+- Login seguro
+- Logout
+
+✅ **Dashboard Colaborativo**
+- Múltiplos usuários compartilham os MESMOS dados
+- Sincronização em tempo real
+- Rastreamento de quem fez cada ação
 
 ✅ **Gerenciamento de Transações**
-- Adicionar Receitas (Salário, Rendimento, Bônus, Aporte)
-- Adicionar Despesas (Alimentação, Transporte, Moradia, Lazer, etc)
-- Adicionar Investimentos (Ações Brasil, P&G USD, Renda Fixa)
+- Adicionar Receitas, Despesas e Investimentos
+- Visualizar histórico com usuário de cada ação
+- Deletar transações
 
 ✅ **Visualizações Avançadas**
-- Evolução do Patrimônio (gráfico de linha)
-- Projeção até 2030 (gráfico de barras)
-- Distribuição por Categoria (gráfico donut)
-- Comparação Receita vs Despesa (gráfico de barras)
+- 4 gráficos em tempo real
+- Evolução do Patrimônio
+- Projeção até 2030
+- Distribuição por Categoria
+- Receita vs Despesa
 
-✅ **Persistência de Dados**
-- Todos os dados são salvos localmente (localStorage)
+✅ **Armazenamento em Firebase Firestore**
+- Dados compartilhados entre usuários
 - Sincronização automática
-
-✅ **Configurações Personalizáveis**
-- Cotação USD → BRL customizável
-- Taxa de rendimento mensal ajustável
-- Meta de patrimônio personalizada
+- Backup automático
 
 ## 🚀 Como Usar
 
 ### 1. Acessar a Aplicação
-O app está disponível em: `https://thiagomroato.github.io/financial-dashboard`
-
-### 2. Adicionar Dados
-- **Receita**: Clique em "Adicionar Receita" e preencha os dados
-- **Despesa**: Clique em "Adicionar Despesa" e preencha os dados
-- **Investimento**: Clique em "Adicionar Investimento" e preencha os dados
-
-### 3. Visualizar Dashboard
-- Todos os gráficos são atualizados em tempo real
-- Histórico de transações fica visível na tabela
-
-### 4. Ajustar Configurações
-- Clique em ⚙️ Configurações para:
-  - Alterar cotação USD
-  - Ajustar taxa de rendimento
-  - Modificar meta de patrimônio 2030
-
-## 📊 Dados Iniciais Padrão
-## 🛠️ Tecnologias
-
-- **HTML5** - Estrutura
-- **CSS3** - Estilo responsivo
-- **JavaScript Vanilla** - Lógica da aplicação
-- **Bootstrap 5** - Framework CSS
-- **Chart.js** - Gráficos interativos
-- **Font Awesome** - Ícones
-
-## 💾 Armazenamento
-
-Todos os dados são salvos no `localStorage` do navegador
-
-## 🎨 Design
-
-- Interface moderna e responsiva
-- Gradientes visuais atraentes
-- Animações suaves
-- Compatível com mobile, tablet e desktop
-
-## 🔒 Privacidade
-
-Todos os dados são armazenados **localmente** no seu navegador. Nenhum dado é enviado para servidores externos.
-
-## 📄 Licença
-
-Este projeto está disponível para uso pessoal e educacional.
-
----
-
-**Desenvolvido com ❤️ para gerenciamento financeiro inteligente**
