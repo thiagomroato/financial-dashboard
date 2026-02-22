@@ -1,7 +1,20 @@
+console.log('🔐 auth.js carregando...');
+
+// Verificar se auth foi inicializado
+if (typeof auth === 'undefined') {
+  console.error('❌ Firebase Auth não foi inicializado!');
+} else {
+  console.log('✅ Firebase Auth disponível');
+}
+
 // Monitorar autenticação
 auth.onAuthStateChanged(async (user) => {
+  console.log('👤 Estado de autenticação mudou:', user ? user.email : 'Deslogado');
+  
   if (user) {
     usuarioAtual = user;
+    console.log('✅ Usuário logado:', user.email);
+    
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
     document.getElementById('usuarioNome').textContent = `Bem-vindo, ${user.email}!`;
@@ -11,6 +24,8 @@ auth.onAuthStateChanged(async (user) => {
     atualizar();
   } else {
     usuarioAtual = null;
+    console.log('✅ Usuário deslogado');
+    
     document.getElementById('authScreen').style.display = 'block';
     document.getElementById('appScreen').style.display = 'none';
     limparFormularios();
@@ -22,6 +37,8 @@ async function fazerRegistro() {
   const nome = document.getElementById('registerNome').value;
   const email = document.getElementById('registerEmail').value;
   const senha = document.getElementById('registerPassword').value;
+
+  console.log('📝 Tentando registrar:', email);
 
   if (!nome || !email || !senha) {
     mostrarErro('Preencha todos os campos!');
@@ -35,6 +52,7 @@ async function fazerRegistro() {
 
   try {
     const resultado = await auth.createUserWithEmailAndPassword(email, senha);
+    console.log('✅ Usuário criado:', resultado.user.email);
     
     // Salvar perfil no Firestore
     await db.collection('usuarios').doc(resultado.user.uid).set({
@@ -44,6 +62,8 @@ async function fazerRegistro() {
       ultimoLogin: new Date()
     });
 
+    console.log('✅ Perfil salvo no Firestore');
+
     // Criar configurações compartilhadas
     await db.collection('configuracoes').doc('geral').set({
       usdRate: 5.00,
@@ -52,10 +72,13 @@ async function fazerRegistro() {
       ultimaAtualizacao: new Date()
     }, { merge: true });
 
+    console.log('✅ Configurações criadas');
+
     limparFormularios();
     mostrarLogin();
     mostrarErro('Conta criada com sucesso! Faça login agora.', 'success');
   } catch (error) {
+    console.error('❌ Erro ao criar conta:', error);
     mostrarErro('Erro ao criar conta: ' + error.message);
   }
 }
@@ -65,15 +88,19 @@ async function fazerLogin() {
   const email = document.getElementById('loginEmail').value;
   const senha = document.getElementById('loginPassword').value;
 
+  console.log('🔑 Tentando fazer login:', email);
+
   if (!email || !senha) {
     mostrarErro('Preencha email e senha!');
     return;
   }
 
   try {
-    await auth.signInWithEmailAndPassword(email, senha);
+    const resultado = await auth.signInWithEmailAndPassword(email, senha);
+    console.log('✅ Login bem-sucedido:', resultado.user.email);
     limparFormularios();
   } catch (error) {
+    console.error('❌ Erro ao fazer login:', error);
     mostrarErro('Erro ao fazer login: ' + error.message);
   }
 }
@@ -82,8 +109,10 @@ async function fazerLogin() {
 async function fazerLogout() {
   try {
     await auth.signOut();
+    console.log('✅ Logout realizado');
     mostrarErro('Logout realizado com sucesso!', 'success');
   } catch (error) {
+    console.error('❌ Erro ao fazer logout:', error);
     mostrarErro('Erro ao fazer logout: ' + error.message);
   }
 }
@@ -123,6 +152,8 @@ function limparFormularios() {
 // Carregar dados do Firebase
 async function carregarDadosDoFirebase() {
   try {
+    console.log('📥 Carregando dados do Firebase...');
+    
     // Carregar configurações
     const configDoc = await db.collection('configuracoes').doc('geral').get();
     if (configDoc.exists) {
@@ -130,6 +161,7 @@ async function carregarDadosDoFirebase() {
       configuracoes.usdRate = data.usdRate || 5.00;
       configuracoes.monthlyRate = data.monthlyRate || 1.00;
       configuracoes.targetGoal = data.targetGoal || 112000;
+      console.log('✅ Configurações carregadas');
     }
 
     // Atualizar inputs
@@ -141,6 +173,7 @@ async function carregarDadosDoFirebase() {
     db.collection('transacoes')
       .orderBy('data', 'desc')
       .onSnapshot((snapshot) => {
+        console.log('📊 Atualizando transações...');
         transacoes = [];
         snapshot.forEach((doc) => {
           transacoes.push({
@@ -148,9 +181,14 @@ async function carregarDadosDoFirebase() {
             ...doc.data()
           });
         });
+        console.log(`✅ ${transacoes.length} transações carregadas`);
         atualizar();
+      }, (error) => {
+        console.error('❌ Erro ao carregar transações:', error);
       });
   } catch (error) {
-    console.error('Erro ao carregar dados:', error);
+    console.error('❌ Erro ao carregar dados:', error);
   }
 }
+
+console.log('✅ auth.js carregado com sucesso!');
