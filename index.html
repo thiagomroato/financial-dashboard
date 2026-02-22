@@ -859,10 +859,16 @@
         let transacoes = [];
         let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
 
-        // ========== LOGIN ==========
-        document.getElementById('btnLogin').addEventListener('click', () => {
+        // ========== FUNÇÃO LOGIN ==========
+        function fazerLogin() {
+            console.log('🔑 Botão entrar clicado!');
+            
             const email = document.getElementById('loginEmail').value.trim();
             const senha = document.getElementById('loginPassword').value.trim();
+
+            console.log('Email:', email);
+            console.log('Senha:', senha);
+            console.log('Esperado - Email:', USUARIO_PADRAO, 'Senha:', SENHA_PADRAO);
 
             if (!email || !senha) {
                 mostrarErroAuth('Preencha todos os campos!');
@@ -870,33 +876,37 @@
             }
 
             if (email === USUARIO_PADRAO && senha === SENHA_PADRAO) {
+                console.log('✅ LOGIN CORRETO!');
                 isLogado = true;
                 document.getElementById('authScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'block';
                 document.getElementById('loginEmail').value = '';
                 document.getElementById('loginPassword').value = '';
+                document.getElementById('authError').style.display = 'none';
                 
                 carregarDadosDoFirebase();
                 inicializarDatas();
                 atualizar();
             } else {
-                mostrarErroAuth('Email ou senha incorretos!');
+                console.log('❌ CREDENCIAIS INCORRETAS!');
+                mostrarErroAuth('❌ Email ou senha incorretos!<br>Use: MoratoFamily / LuccaMatteo');
             }
-        });
+        }
 
-        // ========== LOGOUT ==========
-        document.getElementById('btnLogout').addEventListener('click', () => {
+        // ========== FUNÇÃO LOGOUT ==========
+        function fazerLogout() {
+            console.log('🚪 Logout acionado!');
             isLogado = false;
             document.getElementById('authScreen').style.display = 'block';
             document.getElementById('appScreen').style.display = 'none';
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
-        });
+        }
 
-        // ========== ERRO AUTH ==========
+        // ========== MOSTRAR ERRO ==========
         function mostrarErroAuth(mensagem) {
             const errorDiv = document.getElementById('authError');
-            errorDiv.textContent = mensagem;
+            errorDiv.innerHTML = mensagem;
             errorDiv.style.display = 'block';
             setTimeout(() => {
                 errorDiv.style.display = 'none';
@@ -906,12 +916,14 @@
         // ========== CARREGAR FIREBASE ==========
         async function carregarDadosDoFirebase() {
             try {
+                console.log('📥 Carregando configurações do Firebase...');
                 const configDoc = await db.collection('configuracoes').doc('geral').get();
                 if (configDoc.exists) {
                     const data = configDoc.data();
                     configuracoes.usdRate = data.usdRate || 5.00;
                     configuracoes.monthlyRate = data.monthlyRate || 1.00;
                     configuracoes.targetGoal = data.targetGoal || 112000;
+                    console.log('✅ Configurações carregadas');
                 }
 
                 document.getElementById('usdRate').value = configuracoes.usdRate;
@@ -919,6 +931,7 @@
                 document.getElementById('targetGoal').value = configuracoes.targetGoal;
 
                 // Sincronizar transações em tempo real
+                console.log('📊 Carregando transações...');
                 db.collection('transacoes')
                     .orderBy('data', 'desc')
                     .onSnapshot((snapshot) => {
@@ -929,15 +942,16 @@
                                 ...doc.data()
                             });
                         });
+                        console.log('✅', transacoes.length, 'transações carregadas');
                         atualizar();
                     });
             } catch (error) {
-                console.error('Erro ao carregar:', error);
+                console.error('❌ Erro ao carregar:', error);
             }
         }
 
         // ========== ADICIONAR RECEITA ==========
-        document.getElementById('btnAdicionarReceita').addEventListener('click', async () => {
+        async function adicionarReceita() {
             const data = document.getElementById('receitaData').value;
             const categoria = document.getElementById('receitaCategoria').value;
             const descricao = document.getElementById('receitaDescricao').value;
@@ -958,14 +972,14 @@
                 document.getElementById('receitaData').value = '';
                 document.getElementById('receitaDescricao').value = '';
                 document.getElementById('receitaValor').value = '';
-                alert('Receita adicionada!');
+                alert('✅ Receita adicionada!');
             } catch (error) {
-                alert('Erro: ' + error.message);
+                alert('❌ Erro: ' + error.message);
             }
-        });
+        }
 
         // ========== ADICIONAR DESPESA ==========
-        document.getElementById('btnAdicionarDespesa').addEventListener('click', async () => {
+        async function adicionarDespesa() {
             const data = document.getElementById('despesaData').value;
             const categoria = document.getElementById('despesaCategoria').value;
             const descricao = document.getElementById('despesaDescricao').value;
@@ -986,14 +1000,14 @@
                 document.getElementById('despesaData').value = '';
                 document.getElementById('despesaDescricao').value = '';
                 document.getElementById('despesaValor').value = '';
-                alert('Despesa adicionada!');
+                alert('✅ Despesa adicionada!');
             } catch (error) {
-                alert('Erro: ' + error.message);
+                alert('❌ Erro: ' + error.message);
             }
-        });
+        }
 
         // ========== ADICIONAR INVESTIMENTO ==========
-        document.getElementById('btnAdicionarInvestimento').addEventListener('click', async () => {
+        async function adicionarInvestimento() {
             const data = document.getElementById('investimentoData').value;
             const tipo = document.getElementById('investimentoTipo').value;
             const moeda = document.getElementById('investimentoMoeda').value;
@@ -1013,19 +1027,19 @@
                 bootstrap.Modal.getInstance(document.getElementById('investimentoModal')).hide();
                 document.getElementById('investimentoData').value = '';
                 document.getElementById('investimentoValor').value = '';
-                alert('Investimento adicionado!');
+                alert('✅ Investimento adicionado!');
             } catch (error) {
-                alert('Erro: ' + error.message);
+                alert('❌ Erro: ' + error.message);
             }
-        });
+        }
 
         // ========== DELETAR ==========
         function deletarTransacao(id) {
-            if (confirm('Deletar transação?')) {
+            if (confirm('Tem certeza que deseja deletar?')) {
                 db.collection('transacoes').doc(id).delete().then(() => {
-                    alert('Deletado!');
+                    alert('✅ Deletado!');
                 }).catch((err) => {
-                    alert('Erro: ' + err.message);
+                    alert('❌ Erro: ' + err.message);
                 });
             }
         }
@@ -1087,7 +1101,7 @@
             tbody.innerHTML = '';
 
             if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação registrada</td></tr>';
                 return;
             }
 
@@ -1161,12 +1175,7 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: { legend: { display: true } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
-                        }
-                    }
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') } } }
                 }
             });
         }
@@ -1283,7 +1292,7 @@
         }
 
         // ========== SALVAR CONFIG ==========
-        document.getElementById('btnSalvarConfig').addEventListener('click', async () => {
+        async function salvarConfigurações() {
             const usdRate = parseFloat(document.getElementById('usdRate').value);
             const monthlyRate = parseFloat(document.getElementById('monthlyRate').value);
             const targetGoal = parseFloat(document.getElementById('targetGoal').value);
@@ -1300,12 +1309,12 @@
 
                 configuracoes = { usdRate, monthlyRate, targetGoal };
                 bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-                alert('Configurações salvas!');
+                alert('✅ Configurações salvas!');
                 atualizar();
             } catch (error) {
-                alert('Erro: ' + error.message);
+                alert('❌ Erro: ' + error.message);
             }
-        });
+        }
 
         // ========== ATUALIZAR TUDO ==========
         function atualizar() {
@@ -1317,7 +1326,75 @@
             atualizarGraficoReceitaDespesa();
         }
 
-        console.log('✅ Dashboard pronto!');
+        // ========== INICIALIZAR EVENTOS ==========
+        function inicializarEventos() {
+            console.log('🔌 Inicializando eventos...');
+
+            // Login
+            const btnLogin = document.getElementById('btnLogin');
+            if (btnLogin) {
+                btnLogin.addEventListener('click', fazerLogin);
+                console.log('✅ Evento Login adicionado');
+            }
+
+            // Enter no input de senha
+            const loginPassword = document.getElementById('loginPassword');
+            if (loginPassword) {
+                loginPassword.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        fazerLogin();
+                    }
+                });
+                console.log('✅ Enter na senha configurado');
+            }
+
+            // Logout
+            const btnLogout = document.getElementById('btnLogout');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', fazerLogout);
+                console.log('✅ Evento Logout adicionado');
+            }
+
+            // Receita
+            const btnAdicionarReceita = document.getElementById('btnAdicionarReceita');
+            if (btnAdicionarReceita) {
+                btnAdicionarReceita.addEventListener('click', adicionarReceita);
+                console.log('✅ Evento Receita adicionado');
+            }
+
+            // Despesa
+            const btnAdicionarDespesa = document.getElementById('btnAdicionarDespesa');
+            if (btnAdicionarDespesa) {
+                btnAdicionarDespesa.addEventListener('click', adicionarDespesa);
+                console.log('✅ Evento Despesa adicionado');
+            }
+
+            // Investimento
+            const btnAdicionarInvestimento = document.getElementById('btnAdicionarInvestimento');
+            if (btnAdicionarInvestimento) {
+                btnAdicionarInvestimento.addEventListener('click', adicionarInvestimento);
+                console.log('✅ Evento Investimento adicionado');
+            }
+
+            // Config
+            const btnSalvarConfig = document.getElementById('btnSalvarConfig');
+            if (btnSalvarConfig) {
+                btnSalvarConfig.addEventListener('click', salvarConfigurações);
+                console.log('✅ Evento Config adicionado');
+            }
+
+            console.log('✅ Todos os eventos configurados!');
+        }
+
+        // ========== QUANDO DOM ESTIVER PRONTO ==========
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarEventos);
+        } else {
+            inicializarEventos();
+        }
+
+        console.log('✅ Dashboard carregado com sucesso!');
+        console.log('📝 Credenciais: MoratoFamily / LuccaMatteo');
     </script>
 </body>
 </html>
