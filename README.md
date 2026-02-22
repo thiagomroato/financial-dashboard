@@ -49,3 +49,34 @@ O app está disponível em: `https://thiagomroato.github.io/financial-dashboard`
   - Modificar meta de patrimônio 2030
 
 ## 📊 Dados Iniciais Padrão
+## 🛠️ Tecnologias
+
+- **HTML5** - Estrutura
+- **CSS3** - Estilo responsivo
+- **JavaScript Vanilla** - Lógica da aplicação
+- **Bootstrap 5** - Framework CSS
+- **Chart.js** - Gráficos interativos
+- **Font Awesome** - Ícones
+
+## 💾 Armazenamento
+
+Todos os dados são salvos no `localStorage` do navegador
+
+## 🎨 Design
+
+- Interface moderna e responsiva
+- Gradientes visuais atraentes
+- Animações suaves
+- Compatível com mobile, tablet e desktop
+
+## 🔒 Privacidade
+
+Todos os dados são armazenados **localmente** no seu navegador. Nenhum dado é enviado para servidores externos.
+
+## 📄 Licença
+
+Este projeto está disponível para uso pessoal e educacional.
+
+---
+
+**Desenvolvido com ❤️ para gerenciamento financeiro inteligente**
