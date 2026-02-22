@@ -1,5 +1,7 @@
 // Suas credenciais Firebase
-// ⚠️ SUBSTITUA COM SUAS CREDENCIAIS DO FIREBASE CONSOLE
+// Nota: chaves de API do Firebase são seguras para uso público no lado do cliente.
+// A proteção de dados é garantida pelas Regras de Segurança do Firestore.
+// Consulte o README para configurar as regras de segurança corretamente.
 const firebaseConfig = {
   apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
   authDomain: "financial-dashboard-a2b16.firebaseapp.com",
@@ -7,13 +9,10 @@ const firebaseConfig = {
   storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
   messagingSenderId: "538205467615",
   appId: "1:538205467615:web:24326fa7f323902059ca6a",
+  measurementId: "G-6JXMBQH9G1"
 };
 
 // Inicializar Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
