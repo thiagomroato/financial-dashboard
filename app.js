@@ -25,6 +25,9 @@ const DAILY_QUOTE_HOUR = 10;
 const DAILY_QUOTE_MINUTE = 0;
 const DAILY_QUOTE_SECOND = 0;
 
+// throttle simples p/ não spammar AV
+const AV_DELAY_MS = 450;
+
 /**
  * ==========
  * Helpers
@@ -70,11 +73,13 @@ function toAlphaVantageSymbolCandidates(rawTicker) {
   const t = normalizeTicker(rawTicker);
   if (!t) return [];
 
+  // Brasil: preferir .SA primeiro
   if (isBrazilLikeTicker(t)) {
     const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
     return Array.from(new Set([withSA, t]));
   }
 
+  // EUA: usar como está
   return Array.from(new Set([t, `${t}.SA`]));
 }
 
@@ -176,9 +181,27 @@ function updateInvestTotalUI() {
   if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
 }
 
-function setAddType(tipo) {
-  currentAddType = tipo;
+/**
+ * Toggle:
+ * - Clique no tipo => abre form e seleciona tipo
+ * - Clique no MESMO tipo novamente => fecha form e limpa seleção
+ */
+function toggleAddType(tipo, activeBtn) {
+  const isOpen = addFormEl ? addFormEl.style.display !== "none" : false;
+  const isSameType = currentAddType === tipo;
 
+  if (isOpen && isSameType) {
+    // fechar
+    currentAddType = null;
+    setActiveTypeButton(null);
+    showAddForm(false);
+    if (investFieldsEl) investFieldsEl.hidden = true;
+    return;
+  }
+
+  // abrir/trocar
+  currentAddType = tipo;
+  setActiveTypeButton(activeBtn);
   showAddForm(true);
 
   const isInvest = tipo === "investimento";
@@ -195,7 +218,7 @@ if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
  * ==========
  */
 const quoteCache = new Map(); // symbol => { price, updatedAt }
-const QUOTE_TTL_MS = 24 * 60 * 60 * 1000;
+const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h (pra refletir melhor durante o dia)
 
 async function fetchQuoteForSymbol(symbol) {
   const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
@@ -209,6 +232,7 @@ async function fetchQuoteForSymbol(symbol) {
   const quote = data?.["Global Quote"];
   const price = Number(quote?.["05. price"]);
   if (!Number.isFinite(price) || price <= 0) return null;
+
   return price;
 }
 
@@ -237,7 +261,7 @@ async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
     } catch (e) {
       console.warn("Cotação falhou:", sym, e?.message || e);
     }
-    await sleep(350);
+    await sleep(AV_DELAY_MS);
   }
 
   return null;
@@ -253,7 +277,7 @@ async function updateQuotesForInvestments(rows, { force = false } = {}) {
 
   for (const t of tickers) {
     await fetchAlphaVantageQuoteSmart(t, { force });
-    await sleep(350);
+    await sleep(AV_DELAY_MS);
   }
 }
 
@@ -267,13 +291,15 @@ function getCachedQuoteForTicker(rawTicker) {
 }
 
 function getCurrentValueForInvestmentRow(row) {
-  // Retorna null se não tiver ticker/cotação/qtd.
   if (row.tipo !== "investimento") return null;
+
   const qtd = Number(row.qtdAcoes || 0);
   if (!Number.isFinite(qtd) || qtd <= 0) return null;
-  if (!row.ticker) return null;
 
-  const q = getCachedQuoteForTicker(row.ticker);
+  const t = normalizeTicker(row.ticker);
+  if (!t) return null;
+
+  const q = getCachedQuoteForTicker(t);
   if (!q?.price) return null;
 
   return qtd * q.price;
@@ -281,7 +307,7 @@ function getCurrentValueForInvestmentRow(row) {
 
 /**
  * ==========
- * Charts (só renderiza se Chart existir)
+ * Charts
  * ==========
  */
 let lineChart = null;
@@ -339,9 +365,18 @@ function computeFilteredRows(allRows) {
   });
 }
 
+function sumInvestmentsCurrentValue(rows) {
+  let total = 0;
+  rows.forEach(r => {
+    if (r.tipo !== "investimento") return;
+    const atual = getCurrentValueForInvestmentRow(r);
+    if (atual != null) total += atual;
+  });
+  return total;
+}
+
 function renderCharts(filteredRows) {
   if (typeof Chart === "undefined") return;
-
   chartDefaults();
 
   const lineCtx = document.getElementById("barChart");
@@ -375,6 +410,7 @@ function renderCharts(filteredRows) {
     despesaSeries = byDay.map(x => x.despesa);
   } else {
     labels = monthNames.map(m => m.slice(0, 3).toLowerCase());
+
     const byMonthReceita = Array.from({ length: 12 }, () => 0);
     const byMonthDespesa = Array.from({ length: 12 }, () => 0);
 
@@ -390,18 +426,13 @@ function renderCharts(filteredRows) {
     despesaSeries = byMonthDespesa;
   }
 
-  // PIE: investimentos deve ser valor atual (não investido)
-  let receitas = 0, despesas = 0, investimentosAtual = 0;
+  let receitas = 0, despesas = 0;
   filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
     if (r.tipo === "despesa") despesas += r.valor;
-
-    if (r.tipo === "investimento") {
-      const atual = getCurrentValueForInvestmentRow(r);
-      // se não tiver cotação, cai no valor investido como fallback (opcional)
-      investimentosAtual += (atual != null ? atual : Number(r.valor || 0));
-    }
   });
+
+  const investimentosAtual = sumInvestmentsCurrentValue(filteredRows);
 
   destroyCharts();
 
@@ -446,17 +477,13 @@ function renderTableAndKpis(filteredRows) {
   if (!tabela) return;
 
   let receitas = 0, despesas = 0;
-  let investimentosAtual = 0; // KPI agora é valor atual
+  const investimentosAtual = sumInvestmentsCurrentValue(filteredRows);
+
   tabela.innerHTML = "";
 
   filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
     if (r.tipo === "despesa") despesas += r.valor;
-
-    if (r.tipo === "investimento") {
-      const atual = getCurrentValueForInvestmentRow(r);
-      investimentosAtual += (atual != null ? atual : Number(r.valor || 0));
-    }
 
     const tr = document.createElement("tr");
 
@@ -469,7 +496,7 @@ function renderTableAndKpis(filteredRows) {
       const q = getCachedQuoteForTicker(r.ticker);
       if (q?.price) {
         valorAtual = r.qtdAcoes * q.price;
-        pl = valorAtual - r.valor; // r.valor = total investido no lançamento
+        pl = valorAtual - r.valor;
         plPct = r.valor > 0 ? (pl / r.valor) : 0;
         quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
       }
@@ -486,7 +513,7 @@ function renderTableAndKpis(filteredRows) {
           <div class="val-main">Investido: ${brl(r.valor)}</div>
           <div class="val-sub">${quoteLine}</div>
           <div class="val-sub">
-            ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
+            ${valorAtual == null ? `<span class="muted">Atual: carregando...</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
             ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
           </div>
         </div>
@@ -520,13 +547,9 @@ function renderTableAndKpis(filteredRows) {
     tabela.appendChild(tr);
   });
 
-  // KPIs
-  // saldo continua sendo receitas - despesas (fluxo)
   if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
   if (receitasEl) receitasEl.innerText = brl(receitas);
   if (despesasEl) despesasEl.innerText = brl(despesas);
-
-  // INVESTIMENTOS agora exibe o valor atual (cotação * quantidade)
   if (investimentosEl) investimentosEl.innerText = brl(investimentosAtual);
 }
 
@@ -538,7 +561,7 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown custom (blindado)
+ * Dropdown custom
  * ==========
  */
 function setDDOpen(dd, open) {
@@ -597,7 +620,7 @@ async function addCurrent() {
       ticker,
       qtdAcoes: qtd,
       precoAcao: preco,
-      valor: total, // armazenamos o investido (custo)
+      valor: total,
       createdAt: serverTimestamp()
     });
 
@@ -649,12 +672,30 @@ function scheduleDailyQuoteUpdate() {
 
 /**
  * ==========
- * Wire UI
+ * Force quote refresh after snapshot
  * ==========
  */
-if (btnReceita) btnReceita.addEventListener("click", () => { setActiveTypeButton(btnReceita); setAddType("receita"); });
-if (btnDespesa) btnDespesa.addEventListener("click", () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); });
-if (btnInvest) btnInvest.addEventListener("click", () => { setActiveTypeButton(btnInvest); setAddType("investimento"); });
+let quoteRefreshInFlight = false;
+async function ensureQuotesThenRerender(allRows) {
+  if (quoteRefreshInFlight) return;
+  quoteRefreshInFlight = true;
+  try {
+    const filtered = computeFilteredRows(allRows);
+    await updateQuotesForInvestments(filtered, { force: true });
+    renderAll(allRows);
+  } finally {
+    quoteRefreshInFlight = false;
+  }
+}
+
+/**
+ * ==========
+ * Wire UI (TOGGLE)
+ * ==========
+ */
+if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receita", btnReceita));
+if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despesa", btnDespesa));
+if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
 if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
 
 /**
@@ -665,7 +706,6 @@ if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
 showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
 
-// dropdowns só se existirem
 if (yearValue) yearValue.textContent = String(selectedYear);
 if (monthValue) monthValue.textContent = "Todos";
 
@@ -689,9 +729,7 @@ if (clearFiltersBtn) {
     setDDOpen(monthDD, false);
 
     if (window.__ALL_ROWS__) {
-      const filtered = computeFilteredRows(window.__ALL_ROWS__);
-      await updateQuotesForInvestments(filtered, { force: false });
-      renderAll(window.__ALL_ROWS__);
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
     }
   });
 }
@@ -711,7 +749,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       id: docItem.id,
       descricao: data.descricao,
       tipo: data.tipo,
-      valor: Number(data.valor || 0), // custo investido no lançamento
+      valor: Number(data.valor || 0),
       ticker: data.ticker,
       qtdAcoes: Number(data.qtdAcoes || 0),
       precoAcao: Number(data.precoAcao || 0),
@@ -721,57 +759,47 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
-  // Se os dropdowns não existirem no HTML, só renderiza e pronto
-  if (!yearMenu || !monthMenu || !yearValue || !monthValue) {
-    const filtered = computeFilteredRows(allRows);
-    await updateQuotesForInvestments(filtered, { force: false });
-    renderAll(allRows);
-    return;
+  renderAll(allRows);
+
+  if (yearMenu && monthMenu && yearValue && monthValue) {
+    const currentYear = new Date().getFullYear();
+    const years = new Set([currentYear]);
+    allRows.forEach(r => {
+      const d = clampDate(r.createdAt);
+      if (d) years.add(d.getFullYear());
+    });
+
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
+
+    buildMenu(
+      yearMenu,
+      sortedYears.map(y => ({ value: y, label: String(y) })),
+      selectedYear,
+      async (value, label) => {
+        selectedYear = Number(value);
+        yearValue.textContent = label;
+        setDDOpen(yearDD, false);
+        renderAll(window.__ALL_ROWS__);
+        await ensureQuotesThenRerender(window.__ALL_ROWS__);
+      }
+    );
+
+    buildMenu(
+      monthMenu,
+      [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
+      selectedMonth,
+      async (value, label) => {
+        selectedMonth = value === "all" ? "all" : Number(value);
+        monthValue.textContent = label;
+        setDDOpen(monthDD, false);
+        renderAll(window.__ALL_ROWS__);
+        await ensureQuotesThenRerender(window.__ALL_ROWS__);
+      }
+    );
+
+    yearValue.textContent = String(selectedYear);
   }
 
-  const currentYear = new Date().getFullYear();
-  const years = new Set([currentYear]);
-  allRows.forEach(r => {
-    const d = clampDate(r.createdAt);
-    if (d) years.add(d.getFullYear());
-  });
-
-  const sortedYears = Array.from(years).sort((a, b) => b - a);
-  if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
-
-  buildMenu(
-    yearMenu,
-    sortedYears.map(y => ({ value: y, label: String(y) })),
-    selectedYear,
-    async (value, label) => {
-      selectedYear = Number(value);
-      yearValue.textContent = label;
-      setDDOpen(yearDD, false);
-
-      const filtered = computeFilteredRows(window.__ALL_ROWS__);
-      await updateQuotesForInvestments(filtered, { force: false });
-      renderAll(window.__ALL_ROWS__);
-    }
-  );
-
-  buildMenu(
-    monthMenu,
-    [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
-    selectedMonth,
-    async (value, label) => {
-      selectedMonth = value === "all" ? "all" : Number(value);
-      monthValue.textContent = label;
-      setDDOpen(monthDD, false);
-
-      const filtered = computeFilteredRows(window.__ALL_ROWS__);
-      await updateQuotesForInvestments(filtered, { force: false });
-      renderAll(window.__ALL_ROWS__);
-    }
-  );
-
-  yearValue.textContent = String(selectedYear);
-
-  const filtered = computeFilteredRows(allRows);
-  await updateQuotesForInvestments(filtered, { force: false });
-  renderAll(allRows);
+  await ensureQuotesThenRerender(allRows);
 });
