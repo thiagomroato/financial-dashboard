@@ -98,7 +98,7 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
-// container do formulário
+// container do formulário (precisa existir no index.html)
 const addFormEl = document.getElementById("addForm");
 
 // Inputs
@@ -118,7 +118,7 @@ const btnDespesa = document.getElementById("btnDespesa");
 const btnInvest = document.getElementById("btnInvest");
 const btnAdd = document.getElementById("btnAdd");
 
-// Dropdown (Ano/Mês)
+// Dropdown (Ano/Mês) - podem não existir dependendo do seu HTML
 const yearDD = document.getElementById("yearDD");
 const yearMenu = document.getElementById("yearMenu");
 const yearValue = document.getElementById("yearValue");
@@ -150,7 +150,7 @@ let currentAddType = null;
 
 /**
  * ==========
- * UI
+ * UI helpers
  * ==========
  */
 function setActiveTypeButton(activeBtn) {
@@ -165,14 +165,33 @@ function showAddForm(show) {
   addFormEl.style.display = show ? "block" : "none";
 }
 
+function getInvestTotal() {
+  const qtd = Number(qtdAcoesEl?.value || 0);
+  const preco = Number(precoAcaoEl?.value || 0);
+  return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
+}
+
+function updateInvestTotalUI() {
+  const total = getInvestTotal();
+  if (investTotalEl) investTotalEl.textContent = brl(total);
+  if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
+}
+
 function setAddType(tipo) {
   currentAddType = tipo;
+
+  console.log("tipo selecionado:", tipo); // DEBUG
+
+  // mostra formulário quando selecionar tipo
   showAddForm(true);
 
   const isInvest = tipo === "investimento";
   if (investFieldsEl) investFieldsEl.hidden = !isInvest;
   if (isInvest) updateInvestTotalUI();
 }
+
+if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", updateInvestTotalUI);
+if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
 
 /**
  * ==========
@@ -194,7 +213,6 @@ async function fetchQuoteForSymbol(symbol) {
   const quote = data?.["Global Quote"];
   const price = Number(quote?.["05. price"]);
   if (!Number.isFinite(price) || price <= 0) return null;
-
   return price;
 }
 
@@ -254,27 +272,7 @@ function getCachedQuoteForTicker(rawTicker) {
 
 /**
  * ==========
- * Invest total auto
- * ==========
- */
-function getInvestTotal() {
-  const qtd = Number(qtdAcoesEl?.value || 0);
-  const preco = Number(precoAcaoEl?.value || 0);
-  return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
-}
-
-function updateInvestTotalUI() {
-  const total = getInvestTotal();
-  if (investTotalEl) investTotalEl.textContent = brl(total);
-  if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
-}
-
-if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", updateInvestTotalUI);
-if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
-
-/**
- * ==========
- * Charts
+ * Charts (só renderiza se Chart existir)
  * ==========
  */
 let lineChart = null;
@@ -286,6 +284,7 @@ function destroyCharts() {
 }
 
 function chartDefaults() {
+  if (typeof Chart === "undefined") return;
   Chart.defaults.color = "rgba(229,231,235,.62)";
   Chart.defaults.font.family =
     'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
@@ -332,13 +331,16 @@ function computeFilteredRows(allRows) {
 }
 
 function renderCharts(filteredRows) {
-  chartDefaults();
+  if (typeof Chart === "undefined") return;
 
-  const blue = "rgba(109,124,255,1)";
-  const pink = "rgba(217,70,239,1)";
+  chartDefaults();
 
   const lineCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
+  if (!lineCtx || !pieCtx) return;
+
+  const blue = "rgba(109,124,255,1)";
+  const pink = "rgba(217,70,239,1)";
 
   let labels = [];
   let receitaSeries = [];
@@ -388,62 +390,26 @@ function renderCharts(filteredRows) {
 
   destroyCharts();
 
-  if (lineCtx) {
-    lineChart = new Chart(lineCtx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          makeGlowDataset(blue, receitaSeries, "Receita"),
-          makeGlowDataset(pink, despesaSeries, "Despesa")
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { usePointStyle: true, boxWidth: 8, boxHeight: 8 } },
-          tooltip: {
-            backgroundColor: "rgba(2,6,23,.92)",
-            borderColor: "rgba(255,255,255,.10)",
-            borderWidth: 1,
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${brl(ctx.parsed.y || 0)}` }
-          }
-        },
-        scales: {
-          x: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "rgba(229,231,235,.55)" } },
-          y: { grid: { color: "rgba(255,255,255,.06)" } }
-        }
-      },
-      plugins: [glowPlugin]
-    });
-  }
+  lineChart = new Chart(lineCtx, {
+    type: "line",
+    data: { labels, datasets: [makeGlowDataset(blue, receitaSeries, "Receita"), makeGlowDataset(pink, despesaSeries, "Despesa")] },
+    options: { responsive: true, maintainAspectRatio: false },
+    plugins: [glowPlugin]
+  });
 
-  if (pieCtx) {
-    pieChart = new Chart(pieCtx, {
-      type: "doughnut",
-      data: {
-        labels: ["Receita", "Despesa", "Investimento"],
-        datasets: [{
-          data: [receitas, despesas, investimentos],
-          backgroundColor: [
-            "rgba(109,124,255,0.9)",
-            "rgba(245,158,11,0.9)",
-            "rgba(168,85,247,0.9)"
-          ],
-          borderColor: "rgba(15,23,42,.9)",
-          borderWidth: 3,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "68%",
-        plugins: { legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } } }
-      }
-    });
-  }
+  pieChart = new Chart(pieCtx, {
+    type: "doughnut",
+    data: {
+      labels: ["Receita", "Despesa", "Investimento"],
+      datasets: [{
+        data: [receitas, despesas, investimentos],
+        backgroundColor: ["rgba(109,124,255,0.9)", "rgba(245,158,11,0.9)", "rgba(168,85,247,0.9)"],
+        borderColor: "rgba(15,23,42,.9)",
+        borderWidth: 3
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "68%" }
+  });
 }
 
 /**
@@ -452,6 +418,8 @@ function renderCharts(filteredRows) {
  * ==========
  */
 function renderTableAndKpis(filteredRows) {
+  if (!tabela) return;
+
   let receitas = 0, despesas = 0, investimentos = 0;
   tabela.innerHTML = "";
 
@@ -505,23 +473,27 @@ function renderTableAndKpis(filteredRows) {
       </td>
     `;
 
-    tr.querySelector(".delete").onclick = () =>
-      deleteDoc(doc(db, "transactions", r.id));
+    const delBtn = tr.querySelector(".delete");
+    if (delBtn) delBtn.onclick = () => deleteDoc(doc(db, "transactions", r.id));
 
-    tr.querySelector(".edit").onclick = () => {
-      modalEl.style.display = "flex";
-      editDescricaoEl.value = r.descricao ?? "";
-      editValorEl.value = Number(r.valor || 0);
-      editId = r.id;
-    };
+    const editBtn = tr.querySelector(".edit");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        if (!modalEl) return;
+        modalEl.style.display = "flex";
+        if (editDescricaoEl) editDescricaoEl.value = r.descricao ?? "";
+        if (editValorEl) editValorEl.value = Number(r.valor || 0);
+        editId = r.id;
+      };
+    }
 
     tabela.appendChild(tr);
   });
 
-  saldoEl.innerText = brl(receitas - despesas);
-  receitasEl.innerText = brl(receitas);
-  despesasEl.innerText = brl(despesas);
-  investimentosEl.innerText = brl(investimentos);
+  if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
+  if (receitasEl) receitasEl.innerText = brl(receitas);
+  if (despesasEl) despesasEl.innerText = brl(despesas);
+  if (investimentosEl) investimentosEl.innerText = brl(investimentos);
 }
 
 function renderAll(allRows) {
@@ -532,7 +504,7 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown custom
+ * Dropdown custom (blindado)
  * ==========
  */
 function setDDOpen(dd, open) {
@@ -543,6 +515,7 @@ function setDDOpen(dd, open) {
 }
 
 function buildMenu(menuEl, items, activeValue, onPick) {
+  if (!menuEl) return;
   menuEl.innerHTML = "";
   items.forEach(item => {
     const div = document.createElement("div");
@@ -555,10 +528,13 @@ function buildMenu(menuEl, items, activeValue, onPick) {
 }
 
 function wireDropdown(dd, btnEl, setOpen) {
+  if (!dd || !btnEl) return;
+
   btnEl.addEventListener("click", (e) => {
     e.stopPropagation();
     setOpen(!dd.classList.contains("is-open"));
   });
+
   document.addEventListener("click", () => setOpen(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 }
@@ -591,7 +567,7 @@ async function addCurrent() {
       createdAt: serverTimestamp()
     });
 
-    descricaoEl.value = "";
+    if (descricaoEl) descricaoEl.value = "";
     if (tickerEl) tickerEl.value = "";
     if (qtdAcoesEl) qtdAcoesEl.value = "";
     if (precoAcaoEl) precoAcaoEl.value = "";
@@ -604,8 +580,9 @@ async function addCurrent() {
   if (!Number.isFinite(valor) || valor <= 0) return;
 
   await addDoc(ref, { descricao, valor, tipo: currentAddType, createdAt: serverTimestamp() });
-  descricaoEl.value = "";
-  valorEl.value = "";
+
+  if (descricaoEl) descricaoEl.value = "";
+  if (valorEl) valorEl.value = "";
 }
 
 /**
@@ -638,17 +615,13 @@ function scheduleDailyQuoteUpdate() {
 
 /**
  * ==========
- * Wire UI
+ * Wire UI (garantido)
  * ==========
  */
-if (btnReceita) btnReceita.onclick = () => { setActiveTypeButton(btnReceita); setAddType("receita"); };
-if (btnDespesa) btnDespesa.onclick = () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); };
-if (btnInvest) btnInvest.onclick = () => { setActiveTypeButton(btnInvest); setAddType("investimento"); };
-if (btnAdd) btnAdd.onclick = () => addCurrent();
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (document.activeElement?.tagName === "INPUT")) addCurrent();
-});
+if (btnReceita) btnReceita.addEventListener("click", () => { setActiveTypeButton(btnReceita); setAddType("receita"); });
+if (btnDespesa) btnDespesa.addEventListener("click", () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); });
+if (btnInvest) btnInvest.addEventListener("click", () => { setActiveTypeButton(btnInvest); setAddType("investimento"); });
+if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
 
 /**
  * ==========
@@ -658,8 +631,9 @@ document.addEventListener("keydown", (e) => {
 showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
 
-yearValue.textContent = String(selectedYear);
-monthValue.textContent = "Todos";
+// dropdowns só se existirem
+if (yearValue) yearValue.textContent = String(selectedYear);
+if (monthValue) monthValue.textContent = "Todos";
 
 wireDropdown(yearDD, yearBtn, (open) => {
   setDDOpen(yearDD, open);
@@ -672,11 +646,11 @@ wireDropdown(monthDD, monthBtn, (open) => {
 });
 
 if (clearFiltersBtn) {
-  clearFiltersBtn.onclick = async () => {
+  clearFiltersBtn.addEventListener("click", async () => {
     selectedYear = new Date().getFullYear();
     selectedMonth = "all";
-    yearValue.textContent = String(selectedYear);
-    monthValue.textContent = "Todos";
+    if (yearValue) yearValue.textContent = String(selectedYear);
+    if (monthValue) monthValue.textContent = "Todos";
     setDDOpen(yearDD, false);
     setDDOpen(monthDD, false);
 
@@ -685,7 +659,7 @@ if (clearFiltersBtn) {
       await updateQuotesForInvestments(filtered, { force: false });
       renderAll(window.__ALL_ROWS__);
     }
-  };
+  });
 }
 
 scheduleDailyQuoteUpdate();
@@ -713,12 +687,21 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
+  // Se os dropdowns não existirem no HTML, só renderiza e pronto
+  if (!yearMenu || !monthMenu || !yearValue || !monthValue) {
+    const filtered = computeFilteredRows(allRows);
+    await updateQuotesForInvestments(filtered, { force: false });
+    renderAll(allRows);
+    return;
+  }
+
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
     const d = clampDate(r.createdAt);
     if (d) years.add(d.getFullYear());
   });
+
   const sortedYears = Array.from(years).sort((a, b) => b - a);
   if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
 
