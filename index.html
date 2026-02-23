@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=30"/>
+  <link rel="stylesheet" href="style.css?v=32"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -50,41 +50,42 @@
         </div>
       </div>
 
+      <!-- PERÍODO (dropdown custom com glow) -->
       <div class="sidebar-section">
         <div class="section-title">Período</div>
 
-        <label class="field">
+        <div class="field">
           <span class="field-label">Ano</span>
-          <div class="select-wrap select-wrap--blue">
-            <select id="yearSelect" class="select">
-              <option value="all">Todos</option>
-            </select>
-          </div>
-        </label>
 
-        <label class="field">
-          <span class="field-label">Mês</span>
-          <div class="select-wrap select-wrap--purple">
-            <select id="monthSelect" class="select">
-              <option value="all">Todos</option>
-              <option value="0">Janeiro</option>
-              <option value="1">Fevereiro</option>
-              <option value="2">Março</option>
-              <option value="3">Abril</option>
-              <option value="4">Maio</option>
-              <option value="5">Junho</option>
-              <option value="6">Julho</option>
-              <option value="7">Agosto</option>
-              <option value="8">Setembro</option>
-              <option value="9">Outubro</option>
-              <option value="10">Novembro</option>
-              <option value="11">Dezembro</option>
-            </select>
+          <div class="dd dd--blue" id="yearDD">
+            <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-dot" aria-hidden="true"></span>
+              <span class="dd-value" id="yearValue">Carregando...</span>
+              <span class="dd-caret" aria-hidden="true"></span>
+            </button>
+            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar ano" id="yearMenu"></div>
           </div>
-        </label>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Mês</span>
+
+          <div class="dd dd--purple" id="monthDD">
+            <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-dot" aria-hidden="true"></span>
+              <span class="dd-value" id="monthValue">Todos</span>
+              <span class="dd-caret" aria-hidden="true"></span>
+            </button>
+            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mês" id="monthMenu"></div>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button class="mini-btn" id="clearFilters" type="button">Limpar</button>
+        </div>
 
         <p class="sidebar-hint">
-          O ano é carregado automaticamente a partir das datas dos lançamentos (e sempre inclui o ano atual).
+          O ano é gerado automaticamente a partir das datas dos lançamentos (e sempre inclui o ano atual).
         </p>
       </div>
     </aside>
