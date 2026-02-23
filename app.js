@@ -1,65 +1,67 @@
 import { db } from "./firebase.js";
 import {
   collection,
-  addDoc,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  serverTimestamp
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const lista = document.getElementById("lista");
-const totalSpan = document.getElementById("total");
-const addBtn = document.getElementById("addBtn");
 
 const transactionsRef = collection(db, "transactions");
 
-addBtn.addEventListener("click", async () => {
-  const descricao = document.getElementById("descricao").value;
-  const valor = document.getElementById("valor").value;
-
-  if (!descricao || !valor) {
-    alert("Preencha todos os campos");
-    return;
-  }
-
-  try {
-    await addDoc(transactionsRef, {
-      descricao,
-      valor: Number(valor),
-      createdAt: serverTimestamp()
-    });
-
-    document.getElementById("descricao").value = "";
-    document.getElementById("valor").value = "";
-  } catch (error) {
-    console.error("Erro ao adicionar:", error);
-    alert("Erro ao salvar. Veja console.");
-  }
-});
+let entradas = 0;
+let despesas = 0;
 
 onSnapshot(transactionsRef, (snapshot) => {
-  lista.innerHTML = "";
-  let total = 0;
 
-  snapshot.forEach((docItem) => {
-    const data = docItem.data();
-    total += data.valor;
+  entradas = 0;
+  despesas = 0;
 
-    const li = document.createElement("li");
-    li.className = "item";
-    li.innerHTML = `
-      <span>${data.descricao}</span>
-      <span>R$ ${data.valor.toFixed(2)}</span>
-      <button data-id="${docItem.id}">🗑</button>
-    `;
-
-    li.querySelector("button").addEventListener("click", async () => {
-      await deleteDoc(doc(db, "transactions", docItem.id));
-    });
-
-    lista.appendChild(li);
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    if (data.tipo === "entrada") {
+      entradas += data.valor;
+    } else {
+      despesas += data.valor;
+    }
   });
 
-  totalSpan.textContent = total.toFixed(2);
+  document.getElementById("entradas").innerText = "R$ " + entradas.toFixed(2);
+  document.getElementById("despesas").innerText = "R$ " + despesas.toFixed(2);
+  document.getElementById("saldo").innerText = "R$ " + (entradas - despesas).toFixed(2);
+
+  renderCharts();
+
 });
+
+function renderCharts() {
+
+  new Chart(document.getElementById("barChart"), {
+    type: 'bar',
+    data: {
+      labels: ['Salário', 'Extras', 'Investimentos'],
+      datasets: [{
+        data: [15000, 3000, 3000]
+      }]
+    }
+  });
+
+  new Chart(document.getElementById("pieChart"), {
+    type: 'doughnut',
+    data: {
+      labels: ['Moradia', 'Cartão', 'Lazer'],
+      datasets: [{
+        data: [3000, 1800, 900]
+      }]
+    }
+  });
+
+  new Chart(document.getElementById("lineChart"), {
+    type: 'line',
+    data: {
+      labels: ['Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      datasets: [{
+        label: 'Saldo',
+        data: [1000, 2000, 1500, 3000, 2500, 4200]
+      }]
+    }
+  });
+
+}
