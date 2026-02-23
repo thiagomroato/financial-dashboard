@@ -53,31 +53,39 @@
       <div class="sidebar-section">
         <div class="section-title">Período</div>
 
-        <div class="pill-list" aria-label="Anos">
-          <button class="pill" type="button">2023</button>
-          <button class="pill" type="button">2024</button>
-          <button class="pill is-active" type="button">2025</button>
-        </div>
+       <div class="sidebar-section">
+  <div class="section-title">Período</div>
 
-        <div class="pill-list" aria-label="Meses">
-          <button class="pill is-active" type="button">Janeiro</button>
-          <button class="pill" type="button">Fevereiro</button>
-          <button class="pill" type="button">Março</button>
-          <button class="pill" type="button">Abril</button>
-          <button class="pill" type="button">Maio</button>
-          <button class="pill" type="button">Junho</button>
-          <button class="pill" type="button">Julho</button>
-          <button class="pill" type="button">Agosto</button>
-          <button class="pill" type="button">Setembro</button>
-          <button class="pill" type="button">Outubro</button>
-          <button class="pill" type="button">Novembro</button>
-          <button class="pill" type="button">Dezembro</button>
-        </div>
+  <label class="field">
+    <span class="field-label">Ano</span>
+    <select id="yearSelect" class="select">
+      <option value="all">Todos</option>
+    </select>
+  </label>
 
-        <p class="sidebar-hint">
-          (Os filtros acima são visuais. Se quiser, eu adapto o <code>app.js</code> para filtrar por mês/ano.)
-        </p>
-      </div>
+  <label class="field">
+    <span class="field-label">Mês</span>
+    <select id="monthSelect" class="select">
+      <option value="all">Todos</option>
+      <option value="0">Janeiro</option>
+      <option value="1">Fevereiro</option>
+      <option value="2">Março</option>
+      <option value="3">Abril</option>
+      <option value="4">Maio</option>
+      <option value="5">Junho</option>
+      <option value="6">Julho</option>
+      <option value="7">Agosto</option>
+      <option value="8">Setembro</option>
+      <option value="9">Outubro</option>
+      <option value="10">Novembro</option>
+      <option value="11">Dezembro</option>
+    </select>
+  </label>
+
+  <p class="sidebar-hint">
+    O ano é carregado automaticamente a partir das datas dos lançamentos.
+  </p>
+</div>
     </aside>
 
     <!-- MAIN -->
