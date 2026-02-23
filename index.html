@@ -1,24 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <h1>📊 Meu Dashboard Financeiro</h1>
+  <div class="container">
+    <h1>📊 Financial Dashboard</h1>
 
-  <div class="card">
-    <input type="text" id="descricao" placeholder="Descrição">
-    <input type="number" id="valor" placeholder="Valor">
-    <button onclick="addTransaction()">Adicionar</button>
+    <div class="card">
+      <input type="text" id="descricao" placeholder="Descrição" />
+      <input type="number" id="valor" placeholder="Valor" />
+      <button id="addBtn">Adicionar</button>
+    </div>
+
+    <div class="summary">
+      <h2>Total: R$ <span id="total">0.00</span></h2>
+    </div>
+
+    <ul id="lista"></ul>
   </div>
-
-  <h2>Transações</h2>
-  <ul id="lista"></ul>
-
-  <h2>Total: R$ <span id="total">0</span></h2>
 
   <script type="module" src="firebase.js"></script>
   <script type="module" src="app.js"></script>
