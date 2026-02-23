@@ -1,64 +1,98 @@
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #f4f6f9;
   margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #0f172a;
+  color: white;
 }
 
-.container {
-  max-width: 600px;
-  margin: 50px auto;
-  padding: 20px;
-}
-
-h1 {
-  text-align: center;
-}
-
-.card {
+.layout {
   display: flex;
-  gap: 10px;
+}
+
+.sidebar {
+  width: 250px;
+  background: #111827;
+  padding: 20px;
+  height: 100vh;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+}
+
+.filter {
   margin-bottom: 20px;
 }
 
-input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
 }
 
-button {
-  padding: 10px 15px;
-  border: none;
-  background: #4CAF50;
+.clear-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid #334155;
   color: white;
-  border-radius: 8px;
   cursor: pointer;
 }
 
-button:hover {
-  opacity: 0.9;
+.main {
+  flex: 1;
+  padding: 30px;
 }
 
-.summary {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
-ul {
-  list-style: none;
-  padding: 0;
+.kpi {
+  padding: 20px;
+  border-radius: 15px;
+  background: #1e293b;
 }
 
-.item {
-  display: flex;
-  justify-content: space-between;
-  background: white;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.kpi.saldo {
+  background: linear-gradient(45deg, #f97316, #ef4444);
+}
+
+.kpi.entradas {
+  background: #1e293b;
+}
+
+.kpi.despesas {
+  background: #1e293b;
+}
+
+.kpi h3 {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.kpi p {
+  font-size: 24px;
+  margin: 10px 0 0;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.chart-card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.chart-card.full {
+  margin-top: 20px;
 }
