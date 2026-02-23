@@ -3,28 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Financial Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Dashboard Finanças</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <div class="container">
-    <h1>📊 Financial Dashboard</h1>
+<div class="layout">
 
-    <div class="card">
-      <input type="text" id="descricao" placeholder="Descrição" />
-      <input type="number" id="valor" placeholder="Valor" />
-      <button id="addBtn">Adicionar</button>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <h2>FABRIDATA</h2>
+
+    <div class="filter">
+      <label>Conta</label>
+      <select>
+        <option>Todas</option>
+      </select>
     </div>
 
-    <div class="summary">
-      <h2>Total: R$ <span id="total">0.00</span></h2>
+    <div class="filter">
+      <label>Ano</label>
+      <select>
+        <option>2026</option>
+      </select>
     </div>
 
-    <ul id="lista"></ul>
-  </div>
+    <button class="clear-btn">Limpar filtros</button>
+  </aside>
 
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="app.js"></script>
+  <!-- MAIN -->
+  <main class="main">
+
+    <h1>Dashboard Finanças Pessoais</h1>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi saldo">
+        <h3>Saldo</h3>
+        <p id="saldo">R$ 0</p>
+      </div>
+
+      <div class="kpi entradas">
+        <h3>Entradas</h3>
+        <p id="entradas">R$ 0</p>
+      </div>
+
+      <div class="kpi despesas">
+        <h3>Despesas</h3>
+        <p id="despesas">R$ 0</p>
+      </div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Top Entradas</h3>
+        <canvas id="barChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Top Despesas</h3>
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card full">
+      <h3>Evolução Mensal</h3>
+      <canvas id="lineChart"></canvas>
+    </div>
+
+  </main>
+
+</div>
+
+<script type="module" src="firebase.js"></script>
+<script type="module" src="app.js"></script>
+
 </body>
 </html>
