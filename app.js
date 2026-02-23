@@ -16,11 +16,11 @@ import {
  * CONFIG (Alpha Vantage)
  * =====================
  */
-const ALPHAVANTAGE_KEY = "5Y1WYBEULZVJSV9U";
+const ALPHAVANTAGE_KEY = "SUA_CHAVE_AQUI";
 const AV_BASE = "https://www.alphavantage.co/query";
 const AV_FUNCTION = "GLOBAL_QUOTE";
 
-// Atualiza��ão diária 10:00:00 (local do browser)
+// Atualização diária 10:00:00 (local do browser)
 const DAILY_QUOTE_HOUR = 10;
 const DAILY_QUOTE_MINUTE = 0;
 const DAILY_QUOTE_SECOND = 0;
@@ -142,7 +142,35 @@ let editId = null;
  */
 let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
-let currentAddType = "receita";
+let currentAddType = null; // só define quando o usuário selecionar
+
+/**
+ * ==========
+ * UI (mostrar botão só após seleção)
+ * ==========
+ */
+function setAddButtonVisible(visible) {
+  if (!btnAdd) return;
+  btnAdd.style.display = visible ? "flex" : "none";
+}
+
+function setActiveTypeButton(activeBtn) {
+  [btnReceita, btnDespesa, btnInvest].forEach(b => {
+    if (!b) return;
+    b.classList.toggle("is-selected", b === activeBtn);
+  });
+}
+
+function setAddType(tipo) {
+  currentAddType = tipo;
+
+  // mostra botão somente depois de selecionar
+  setAddButtonVisible(true);
+
+  const isInvest = tipo === "investimento";
+  if (investFieldsEl) investFieldsEl.hidden = !isInvest;
+  if (isInvest) updateInvestTotalUI();
+}
 
 /**
  * ==========
@@ -238,13 +266,6 @@ function updateInvestTotalUI() {
   const total = getInvestTotal();
   if (investTotalEl) investTotalEl.textContent = brl(total);
   if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
-}
-
-function setAddType(tipo) {
-  currentAddType = tipo;
-  const isInvest = tipo === "investimento";
-  if (investFieldsEl) investFieldsEl.hidden = !isInvest;
-  if (isInvest) updateInvestTotalUI();
 }
 
 if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", updateInvestTotalUI);
@@ -426,7 +447,7 @@ function renderCharts(filteredRows) {
 
 /**
  * ==========
- * Table + KPIs (com qtd/preço e valor atual)
+ * Table + KPIs
  * ==========
  */
 function renderTableAndKpis(filteredRows) {
@@ -510,7 +531,7 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown custom (Ano/Mês)
+ * Dropdown custom
  * ==========
  */
 function setDDOpen(dd, open) {
@@ -543,12 +564,12 @@ function wireDropdown(dd, btnEl, setOpen) {
 
 /**
  * ==========
- * Add (AGORA SEMPRE SALVA CERTO)
+ * Add
  * ==========
  */
 async function addCurrent() {
   const descricao = (descricaoEl?.value || "").trim();
-  if (!descricao) return;
+  if (!descricao || !currentAddType) return;
 
   if (currentAddType === "investimento") {
     const ticker = normalizeTicker(tickerEl?.value || "");
@@ -619,9 +640,9 @@ function scheduleDailyQuoteUpdate() {
  * Wire UI
  * ==========
  */
-btnReceita.onclick = () => setAddType("receita");
-btnDespesa.onclick = () => setAddType("despesa");
-btnInvest.onclick = () => setAddType("investimento");
+btnReceita.onclick = () => { setActiveTypeButton(btnReceita); setAddType("receita"); };
+btnDespesa.onclick = () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); };
+btnInvest.onclick = () => { setActiveTypeButton(btnInvest); setAddType("investimento"); };
 btnAdd.onclick = () => addCurrent();
 
 document.addEventListener("keydown", (e) => {
@@ -633,8 +654,8 @@ document.addEventListener("keydown", (e) => {
  * Boot
  * ==========
  */
-setAddType("receita");
-updateInvestTotalUI();
+setAddButtonVisible(false);
+if (investFieldsEl) investFieldsEl.hidden = true;
 
 yearValue.textContent = String(selectedYear);
 monthValue.textContent = "Todos";
@@ -686,7 +707,6 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
-  // anos para o menu
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
@@ -728,7 +748,6 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   yearValue.textContent = String(selectedYear);
 
-  // atualiza cotações e renderiza
   const filtered = computeFilteredRows(allRows);
   await updateQuotesForInvestments(filtered, { force: false });
   renderAll(allRows);
