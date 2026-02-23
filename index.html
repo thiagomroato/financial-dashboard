@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=32"/>
+  <link rel="stylesheet" href="style.css?v=41"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -29,12 +29,42 @@
           <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
         </label>
 
-        <label class="field">
+        <label class="field" id="valorField">
           <span class="field-label">Valor</span>
-          <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal">
+          <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal" step="0.01">
         </label>
 
-        <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
+        <!-- Campos de investimento (ações) -->
+        <div class="invest-fields" id="investFields" hidden>
+          <label class="field">
+            <span class="field-label">Ticker (EUA: AAPL / Brasil: PETR4 ou PETR4.SA)</span>
+            <input type="text" id="ticker" placeholder="Ex: PETR4, PETR4.SA, AAPL">
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span class="field-label">Quantidade</span>
+              <input type="number" id="qtdAcoes" placeholder="Ex: 10" inputmode="numeric" step="1" min="0">
+            </label>
+
+            <label class="field">
+              <span class="field-label">Preço/ação</span>
+              <input type="number" id="precoAcao" placeholder="Ex: 32.50" inputmode="decimal" step="0.01" min="0">
+            </label>
+          </div>
+
+          <div class="total-preview">
+            <span>Total</span>
+            <strong id="investTotal">R$ 0,00</strong>
+          </div>
+
+          <p class="sidebar-hint" style="margin-top:8px">
+            O <b>Valor</b> será preenchido automaticamente com <code>quantidade × preço/ação</code>.
+          </p>
+        </div>
+
+        <!-- Escolha do tipo (não salva) -->
+        <div class="btn-group" role="group" aria-label="Escolher tipo do lançamento">
           <button id="btnReceita" class="btn receita" type="button">
             <span class="btn-dot" aria-hidden="true"></span>
             Receita
@@ -48,6 +78,15 @@
             Investimento
           </button>
         </div>
+
+        <!-- Botão único para salvar -->
+        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px;">
+          Adicionar
+        </button>
+
+        <p class="sidebar-hint">
+          Selecione o tipo e depois clique em <b>Adicionar</b>.
+        </p>
       </div>
 
       <!-- PERÍODO (dropdown custom com glow) -->
@@ -203,7 +242,7 @@
 
       <label class="field">
         <span class="field-label">Valor</span>
-        <input type="number" id="editValor" inputmode="decimal">
+        <input type="number" id="editValor" inputmode="decimal" step="0.01">
       </label>
 
       <button id="saveEdit" class="btn btn-primary" type="button">Salvar</button>
@@ -214,7 +253,7 @@
   <script type="module" src="app.js"></script>
 
   <script>
-    // Fechar modal (visual) sem mexer na lógica do app.js
+    // Fechar modal (visual)
     const modal = document.getElementById("modal");
     const closeModal = document.getElementById("closeModal");
     if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
