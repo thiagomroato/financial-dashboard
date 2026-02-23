@@ -98,7 +98,6 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
-// container do formulário (precisa existir no index.html)
 const addFormEl = document.getElementById("addForm");
 
 // Inputs
@@ -135,7 +134,6 @@ const clearFiltersBtn = document.getElementById("clearFilters");
  * ==========
  * Firestore
  * ==========
- * (APENAS UMA VEZ!)
  */
 const ref = collection(db, "transactions");
 let editId = null;
@@ -181,7 +179,6 @@ function updateInvestTotalUI() {
 function setAddType(tipo) {
   currentAddType = tipo;
 
-  // mostra formulário quando selecionar tipo
   showAddForm(true);
 
   const isInvest = tipo === "investimento";
@@ -267,6 +264,19 @@ function getCachedQuoteForTicker(rawTicker) {
     if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
   }
   return null;
+}
+
+function getCurrentValueForInvestmentRow(row) {
+  // Retorna null se não tiver ticker/cotação/qtd.
+  if (row.tipo !== "investimento") return null;
+  const qtd = Number(row.qtdAcoes || 0);
+  if (!Number.isFinite(qtd) || qtd <= 0) return null;
+  if (!row.ticker) return null;
+
+  const q = getCachedQuoteForTicker(row.ticker);
+  if (!q?.price) return null;
+
+  return qtd * q.price;
 }
 
 /**
@@ -380,18 +390,30 @@ function renderCharts(filteredRows) {
     despesaSeries = byMonthDespesa;
   }
 
-  let receitas = 0, despesas = 0, investimentos = 0;
+  // PIE: investimentos deve ser valor atual (não investido)
+  let receitas = 0, despesas = 0, investimentosAtual = 0;
   filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
     if (r.tipo === "despesa") despesas += r.valor;
-    if (r.tipo === "investimento") investimentos += r.valor;
+
+    if (r.tipo === "investimento") {
+      const atual = getCurrentValueForInvestmentRow(r);
+      // se não tiver cotação, cai no valor investido como fallback (opcional)
+      investimentosAtual += (atual != null ? atual : Number(r.valor || 0));
+    }
   });
 
   destroyCharts();
 
   lineChart = new Chart(lineCtx, {
     type: "line",
-    data: { labels, datasets: [makeGlowDataset(blue, receitaSeries, "Receita"), makeGlowDataset(pink, despesaSeries, "Despesa")] },
+    data: {
+      labels,
+      datasets: [
+        makeGlowDataset(blue, receitaSeries, "Receita"),
+        makeGlowDataset(pink, despesaSeries, "Despesa")
+      ]
+    },
     options: { responsive: true, maintainAspectRatio: false },
     plugins: [glowPlugin]
   });
@@ -399,10 +421,14 @@ function renderCharts(filteredRows) {
   pieChart = new Chart(pieCtx, {
     type: "doughnut",
     data: {
-      labels: ["Receita", "Despesa", "Investimento"],
+      labels: ["Receita", "Despesa", "Investimentos (atual)"],
       datasets: [{
-        data: [receitas, despesas, investimentos],
-        backgroundColor: ["rgba(109,124,255,0.9)", "rgba(245,158,11,0.9)", "rgba(168,85,247,0.9)"],
+        data: [receitas, despesas, investimentosAtual],
+        backgroundColor: [
+          "rgba(109,124,255,0.9)",
+          "rgba(245,158,11,0.9)",
+          "rgba(168,85,247,0.9)"
+        ],
         borderColor: "rgba(15,23,42,.9)",
         borderWidth: 3
       }]
@@ -419,13 +445,18 @@ function renderCharts(filteredRows) {
 function renderTableAndKpis(filteredRows) {
   if (!tabela) return;
 
-  let receitas = 0, despesas = 0, investimentos = 0;
+  let receitas = 0, despesas = 0;
+  let investimentosAtual = 0; // KPI agora é valor atual
   tabela.innerHTML = "";
 
   filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
     if (r.tipo === "despesa") despesas += r.valor;
-    if (r.tipo === "investimento") investimentos += r.valor;
+
+    if (r.tipo === "investimento") {
+      const atual = getCurrentValueForInvestmentRow(r);
+      investimentosAtual += (atual != null ? atual : Number(r.valor || 0));
+    }
 
     const tr = document.createElement("tr");
 
@@ -438,7 +469,7 @@ function renderTableAndKpis(filteredRows) {
       const q = getCachedQuoteForTicker(r.ticker);
       if (q?.price) {
         valorAtual = r.qtdAcoes * q.price;
-        pl = valorAtual - r.valor;
+        pl = valorAtual - r.valor; // r.valor = total investido no lançamento
         plPct = r.valor > 0 ? (pl / r.valor) : 0;
         quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
       }
@@ -452,7 +483,7 @@ function renderTableAndKpis(filteredRows) {
     const valorCell = r.tipo === "investimento"
       ? `
         <div class="val-col">
-          <div class="val-main">${brl(r.valor)}</div>
+          <div class="val-main">Investido: ${brl(r.valor)}</div>
           <div class="val-sub">${quoteLine}</div>
           <div class="val-sub">
             ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
@@ -489,10 +520,14 @@ function renderTableAndKpis(filteredRows) {
     tabela.appendChild(tr);
   });
 
+  // KPIs
+  // saldo continua sendo receitas - despesas (fluxo)
   if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
   if (receitasEl) receitasEl.innerText = brl(receitas);
   if (despesasEl) despesasEl.innerText = brl(despesas);
-  if (investimentosEl) investimentosEl.innerText = brl(investimentos);
+
+  // INVESTIMENTOS agora exibe o valor atual (cotação * quantidade)
+  if (investimentosEl) investimentosEl.innerText = brl(investimentosAtual);
 }
 
 function renderAll(allRows) {
@@ -562,7 +597,7 @@ async function addCurrent() {
       ticker,
       qtdAcoes: qtd,
       precoAcao: preco,
-      valor: total,
+      valor: total, // armazenamos o investido (custo)
       createdAt: serverTimestamp()
     });
 
@@ -614,7 +649,7 @@ function scheduleDailyQuoteUpdate() {
 
 /**
  * ==========
- * Wire UI (garantido)
+ * Wire UI
  * ==========
  */
 if (btnReceita) btnReceita.addEventListener("click", () => { setActiveTypeButton(btnReceita); setAddType("receita"); });
@@ -676,7 +711,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       id: docItem.id,
       descricao: data.descricao,
       tipo: data.tipo,
-      valor: Number(data.valor || 0),
+      valor: Number(data.valor || 0), // custo investido no lançamento
       ticker: data.ticker,
       qtdAcoes: Number(data.qtdAcoes || 0),
       precoAcao: Number(data.precoAcao || 0),
