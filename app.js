@@ -98,6 +98,10 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
+// Add form container (novo)
+const addFormEl = document.getElementById("addForm");
+
+// Inputs
 const descricaoEl = document.getElementById("descricao");
 const valorEl = document.getElementById("valor");
 
@@ -146,14 +150,9 @@ let currentAddType = null; // só define quando o usuário selecionar
 
 /**
  * ==========
- * UI (mostrar botão só após seleção)
+ * UI
  * ==========
  */
-function setAddButtonVisible(visible) {
-  if (!btnAdd) return;
-  btnAdd.style.display = visible ? "flex" : "none";
-}
-
 function setActiveTypeButton(activeBtn) {
   [btnReceita, btnDespesa, btnInvest].forEach(b => {
     if (!b) return;
@@ -161,11 +160,16 @@ function setActiveTypeButton(activeBtn) {
   });
 }
 
+function showAddForm(show) {
+  if (!addFormEl) return;
+  addFormEl.style.display = show ? "block" : "none";
+}
+
 function setAddType(tipo) {
   currentAddType = tipo;
 
-  // mostra botão somente depois de selecionar
-  setAddButtonVisible(true);
+  // AGORA: formulário inteiro só aparece depois de selecionar
+  showAddForm(true);
 
   const isInvest = tipo === "investimento";
   if (investFieldsEl) investFieldsEl.hidden = !isInvest;
@@ -567,6 +571,8 @@ function wireDropdown(dd, btnEl, setOpen) {
  * Add
  * ==========
  */
+const ref = collection(db, "transactions");
+
 async function addCurrent() {
   const descricao = (descricaoEl?.value || "").trim();
   if (!descricao || !currentAddType) return;
@@ -643,6 +649,7 @@ function scheduleDailyQuoteUpdate() {
 btnReceita.onclick = () => { setActiveTypeButton(btnReceita); setAddType("receita"); };
 btnDespesa.onclick = () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); };
 btnInvest.onclick = () => { setActiveTypeButton(btnInvest); setAddType("investimento"); };
+
 btnAdd.onclick = () => addCurrent();
 
 document.addEventListener("keydown", (e) => {
@@ -654,7 +661,8 @@ document.addEventListener("keydown", (e) => {
  * Boot
  * ==========
  */
-setAddButtonVisible(false);
+// Esconde formulário no início (fica como você pediu)
+showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
 
 yearValue.textContent = String(selectedYear);
@@ -689,6 +697,11 @@ if (clearFiltersBtn) {
 
 scheduleDailyQuoteUpdate();
 
+/**
+ * ==========
+ * Firestore subscription
+ * ==========
+ */
 onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   const allRows = [];
   snapshot.forEach(docItem => {
