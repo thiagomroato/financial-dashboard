@@ -8,8 +8,7 @@ import {
   updateDoc,
   serverTimestamp,
   query,
-  orderBy,
-  where
+  orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /**
@@ -20,24 +19,7 @@ import {
 const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function clampDate(d) {
-  // garante Date válido
   return d instanceof Date && !isNaN(d) ? d : new Date();
-}
-
-function startOfMonth(year, monthIndex) {
-  return new Date(year, monthIndex, 1, 0, 0, 0, 0);
-}
-
-function endOfMonth(year, monthIndex) {
-  return new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
-}
-
-function startOfYear(year) {
-  return new Date(year, 0, 1, 0, 0, 0, 0);
-}
-
-function endOfYear(year) {
-  return new Date(year, 11, 31, 23, 59, 59, 999);
 }
 
 const monthNames = [
@@ -48,10 +30,6 @@ const monthNames = [
 function monthIndexFromLabel(label) {
   const idx = monthNames.findIndex(m => m.toLowerCase() === String(label).toLowerCase());
   return idx >= 0 ? idx : null;
-}
-
-function getCSSVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 /**
@@ -75,16 +53,15 @@ const editValorEl = document.getElementById("editValor");
  * ==========
  */
 const ref = collection(db, "transactions");
-
 let editId = null;
 
 /**
  * ==========
- * Filter state
+ * UI state (somente para o modo do gráfico, não filtra dados)
  * ==========
  */
-let selectedYear = null;      // number | null
-let selectedMonth = null;     // 0-11 | null
+let selectedYear = null;  // number | null
+let selectedMonth = null; // 0-11 | null
 
 /**
  * ==========
@@ -100,19 +77,12 @@ function destroyCharts() {
 }
 
 function chartDefaults() {
-  const grid = "rgba(255,255,255,.07)";
-  const tick = "rgba(229,231,235,.62)";
-  const title = "rgba(229,231,235,.86)";
-
-  Chart.defaults.color = tick;
+  Chart.defaults.color = "rgba(229,231,235,.62)";
   Chart.defaults.font.family =
     'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-
-  return { grid, tick, title };
 }
 
 function makeGlowDataset(baseColor, data, label) {
-  // “Glow” simples: borda + sombra via plugin (abaixo) e preenchimento leve
   return {
     label,
     data,
@@ -149,27 +119,31 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
   const purple = "rgba(168,85,247,1)";
   const amber = "rgba(245,158,11,1)";
 
-  // BAR / LINE (Análise Mensal)
   const barCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
 
-  // Se mês selecionado: agregação por dia do mês (1..N)
-  // Se só ano: agregação por mês
+  // Modo do gráfico:
+  // - se selectedMonth != null => agrega por dia (usando o ano selecionado, ou ano atual)
+  // - caso contrário => agrega geral por mês (todas as transações, qualquer ano)
   let labels = [];
   let receitaSeries = [];
   let despesaSeries = [];
 
-  if (selectedYear != null && selectedMonth != null) {
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+  if (selectedMonth != null) {
+    const y = selectedYear ?? new Date().getFullYear();
+    const daysInMonth = new Date(y, selectedMonth + 1, 0).getDate();
 
+    labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
     const byDay = Array.from({ length: daysInMonth }, () => ({ receita: 0, despesa: 0 }));
 
+    // IMPORTANTE: não filtra; só agrega os que caem nesse mês/ano para o gráfico de dias
     rows.forEach(r => {
       if (!r.createdAt) return;
       const d = clampDate(r.createdAt);
-      const day = d.getDate() - 1;
+      if (d.getFullYear() !== y) return;
+      if (d.getMonth() !== selectedMonth) return;
 
+      const day = d.getDate() - 1;
       if (r.tipo === "receita") byDay[day].receita += r.valor;
       if (r.tipo === "despesa") byDay[day].despesa += r.valor;
     });
@@ -203,8 +177,6 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
             backgroundColor: "rgba(2,6,23,.92)",
             borderColor: "rgba(255,255,255,.10)",
             borderWidth: 1,
-            titleColor: "rgba(229,231,235,.95)",
-            bodyColor: "rgba(229,231,235,.80)",
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtBRL.format(ctx.parsed.y || 0)}`
             }
@@ -220,9 +192,8 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
             ticks: {
               color: "rgba(229,231,235,.55)",
               callback: (v) => {
-                // compacta: 1000 => 1k
                 const n = Number(v);
-                if (Math.abs(n) >= 1000) return `${(n/1000).toFixed(0)}k`;
+                if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}k`;
                 return String(n);
               }
             }
@@ -233,7 +204,6 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
     });
   }
 
-  // PIE (Despesas no mês / distribuição)
   if (pieCtx) {
     pieChartInstance = new Chart(pieCtx, {
       type: "doughnut",
@@ -276,7 +246,7 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
 
 /**
  * ==========
- * UI: Pills (ano / mês)
+ * Pills: agora não filtram Firestore, só mudam o "modo" do gráfico
  * ==========
  */
 function setupPills() {
@@ -295,115 +265,37 @@ function setupPills() {
     p.addEventListener("click", () => {
       selectedYear = Number(p.textContent) || now.getFullYear();
       setActive(yearPills, p);
-      // se trocar ano e não tiver mês selecionado, mantém null; se tiver, mantém o mês
-      resubscribe();
+      // só re-renderiza charts (dados já estão em memória via snapshot)
+      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
     });
   });
 
   monthPills.forEach(p => {
     p.addEventListener("click", () => {
-      const idx = monthIndexFromLabel(p.textContent);
-      selectedMonth = idx;
+      selectedMonth = monthIndexFromLabel(p.textContent);
       setActive(monthPills, p);
-      resubscribe();
+      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
     });
   });
 
-  // opcional: clique duplo no mês para "limpar" mês (ficar só por ano)
   monthPills.forEach(p => {
     p.addEventListener("dblclick", () => {
       selectedMonth = null;
       monthPills.forEach(x => x.classList.remove("is-active"));
-      resubscribe();
+      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
     });
   });
 }
 
 /**
  * ==========
- * Firestore subscription with filters
- * ==========
- */
-let unsubscribe = null;
-
-function buildQuery() {
-  // Sem filtro => tudo (ordenado)
-  if (selectedYear == null && selectedMonth == null) {
-    return query(ref, orderBy("createdAt", "desc"));
-  }
-
-  // Ano + mês => range do mês
-  if (selectedYear != null && selectedMonth != null) {
-    const start = startOfMonth(selectedYear, selectedMonth);
-    const end = endOfMonth(selectedYear, selectedMonth);
-
-    return query(
-      ref,
-      where("createdAt", ">=", start),
-      where("createdAt", "<=", end),
-      orderBy("createdAt", "desc")
-    );
-  }
-
-  // Só ano => range do ano
-  if (selectedYear != null) {
-    const start = startOfYear(selectedYear);
-    const end = endOfYear(selectedYear);
-
-    return query(
-      ref,
-      where("createdAt", ">=", start),
-      where("createdAt", "<=", end),
-      orderBy("createdAt", "desc")
-    );
-  }
-
-  // Só mês (sem ano) => usa ano atual
-  const y = new Date().getFullYear();
-  const start = startOfMonth(y, selectedMonth ?? 0);
-  const end = endOfMonth(y, selectedMonth ?? 0);
-
-  return query(
-    ref,
-    where("createdAt", ">=", start),
-    where("createdAt", "<=", end),
-    orderBy("createdAt", "desc")
-  );
-}
-
-function resubscribe() {
-  if (unsubscribe) unsubscribe();
-  destroyCharts();
-
-  const q = buildQuery();
-
-  unsubscribe = onSnapshot(q, snapshot => {
-    const rows = [];
-    snapshot.forEach(docItem => {
-      const data = docItem.data();
-      rows.push({
-        id: docItem.id,
-        descricao: data.descricao,
-        tipo: data.tipo,
-        valor: Number(data.valor || 0),
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
-      });
-    });
-
-    renderAll(rows);
-  });
-}
-
-/**
- * ==========
- * Render KPIs / table / chart aggregations
+ * Render KPIs / table / chart aggregations (GERAL)
  * ==========
  */
 function renderAll(rows) {
-  // KPIs
   let receitas = 0, despesas = 0, investimentos = 0;
 
-  // agregação para charts por mês (ano) - 12 buckets
+  // Geral por mês (todas as transações, todos os anos)
   const byMonthReceita = Array.from({ length: 12 }, () => 0);
   const byMonthDespesa = Array.from({ length: 12 }, () => 0);
 
@@ -414,13 +306,13 @@ function renderAll(rows) {
     if (r.tipo === "despesa") despesas += r.valor;
     if (r.tipo === "investimento") investimentos += r.valor;
 
+    // para o gráfico geral por mês, usa o mês do createdAt
     if (r.createdAt) {
       const m = clampDate(r.createdAt).getMonth();
       if (r.tipo === "receita") byMonthReceita[m] += r.valor;
       if (r.tipo === "despesa") byMonthDespesa[m] += r.valor;
     }
 
-    // Linha da tabela
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${r.descricao ?? ""}</td>
@@ -450,10 +342,8 @@ function renderAll(rows) {
   despesasEl.innerText = fmtBRL.format(despesas);
   investimentosEl.innerText = fmtBRL.format(investimentos);
 
-  // PIE data
   const pieData = [receitas, despesas, investimentos];
 
-  // Charts
   destroyCharts();
   renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData });
 }
@@ -524,8 +414,26 @@ document.getElementById("saveEdit").onclick = async () => {
 
 /**
  * ==========
- * Boot
+ * Boot (GERAL)
  * ==========
  */
 setupPills();
-resubscribe();
+
+onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
+  const rows = [];
+  snapshot.forEach(docItem => {
+    const data = docItem.data();
+    rows.push({
+      id: docItem.id,
+      descricao: data.descricao,
+      tipo: data.tipo,
+      valor: Number(data.valor || 0),
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
+    });
+  });
+
+  // cache em memória para re-render ao clicar nas pills
+  window.__ALL_ROWS__ = rows;
+
+  renderAll(rows);
+});
