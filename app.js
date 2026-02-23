@@ -74,12 +74,12 @@ let selectedMonth = "all";  // "all" | 0..11
  * Charts
  * ==========
  */
-let barChartInstance = null;
-let pieChartInstance = null;
+let lineChart = null;
+let pieChart = null;
 
 function destroyCharts() {
-  if (barChartInstance) { barChartInstance.destroy(); barChartInstance = null; }
-  if (pieChartInstance) { pieChartInstance.destroy(); pieChartInstance = null; }
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+  if (pieChart) { pieChart.destroy(); pieChart = null; }
 }
 
 function chartDefaults() {
@@ -93,12 +93,13 @@ function makeGlowDataset(baseColor, data, label) {
     label,
     data,
     borderColor: baseColor,
-    backgroundColor: baseColor.replace("1)", "0.25)"),
+    backgroundColor: baseColor.replace("1)", "0.22)"),
     borderWidth: 2,
     pointRadius: 3,
     pointHoverRadius: 4,
     pointBackgroundColor: baseColor,
-    tension: 0.35
+    tension: 0.35,
+    fill: true
   };
 }
 
@@ -120,8 +121,8 @@ const glowPlugin = {
 function computeFilteredRows(allRows) {
   return allRows.filter(r => {
     const d = clampDate(r.createdAt);
+
     if (!d) {
-      // Se não tem createdAt, mantém no geral; mas se usuário escolher ano/mês, exclui
       if (selectedYear !== "all" || selectedMonth !== "all") return false;
       return true;
     }
@@ -133,7 +134,7 @@ function computeFilteredRows(allRows) {
   });
 }
 
-function renderCharts({ filteredRows }) {
+function renderCharts(filteredRows) {
   chartDefaults();
 
   const blue = "rgba(109,124,255,1)";
@@ -141,20 +142,20 @@ function renderCharts({ filteredRows }) {
   const purple = "rgba(168,85,247,1)";
   const amber = "rgba(245,158,11,1)";
 
-  const barCtx = document.getElementById("barChart");
+  const lineCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
 
-  // BAR/LINE:
-  // - Se mês selecionado e ano selecionado => agrega por dia
-  // - Caso contrário => agrega por mês (jan..dez) dentro do recorte atual
+  // LINE:
+  // - Ano+Mês => por dia
+  // - Caso contrário => por mês (jan..dez) dentro do recorte atual
   let labels = [];
   let receitaSeries = [];
   let despesaSeries = [];
 
-  const hasFixedMonth = selectedMonth !== "all";
   const hasFixedYear = selectedYear !== "all";
+  const hasFixedMonth = selectedMonth !== "all";
 
-  if (hasFixedMonth && hasFixedYear) {
+  if (hasFixedYear && hasFixedMonth) {
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
 
@@ -187,10 +188,18 @@ function renderCharts({ filteredRows }) {
     despesaSeries = byMonthDespesa;
   }
 
+  // PIE:
+  let receitas = 0, despesas = 0, investimentos = 0;
+  filteredRows.forEach(r => {
+    if (r.tipo === "receita") receitas += r.valor;
+    if (r.tipo === "despesa") despesas += r.valor;
+    if (r.tipo === "investimento") investimentos += r.valor;
+  });
+
   destroyCharts();
 
-  if (barCtx) {
-    barChartInstance = new Chart(barCtx, {
+  if (lineCtx) {
+    lineChart = new Chart(lineCtx, {
       type: "line",
       data: {
         labels,
@@ -203,9 +212,7 @@ function renderCharts({ filteredRows }) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            labels: { usePointStyle: true, boxWidth: 8, boxHeight: 8 }
-          },
+          legend: { labels: { usePointStyle: true, boxWidth: 8, boxHeight: 8 } },
           tooltip: {
             backgroundColor: "rgba(2,6,23,.92)",
             borderColor: "rgba(255,255,255,.10)",
@@ -234,16 +241,8 @@ function renderCharts({ filteredRows }) {
     });
   }
 
-  // PIE:
-  let receitas = 0, despesas = 0, investimentos = 0;
-  filteredRows.forEach(r => {
-    if (r.tipo === "receita") receitas += r.valor;
-    if (r.tipo === "despesa") despesas += r.valor;
-    if (r.tipo === "investimento") investimentos += r.valor;
-  });
-
   if (pieCtx) {
-    pieChartInstance = new Chart(pieCtx, {
+    pieChart = new Chart(pieCtx, {
       type: "doughnut",
       data: {
         labels: ["Receita", "Despesa", "Investimento"],
@@ -264,10 +263,7 @@ function renderCharts({ filteredRows }) {
         maintainAspectRatio: false,
         cutout: "68%",
         plugins: {
-          legend: {
-            position: "right",
-            labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 }
-          },
+          legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } },
           tooltip: {
             backgroundColor: "rgba(2,6,23,.92)",
             borderColor: "rgba(255,255,255,.10)",
@@ -282,9 +278,7 @@ function renderCharts({ filteredRows }) {
   }
 }
 
-function renderAll(allRows) {
-  const filteredRows = computeFilteredRows(allRows);
-
+function renderTableAndKpis(filteredRows) {
   let receitas = 0, despesas = 0, investimentos = 0;
   tabela.innerHTML = "";
 
@@ -321,13 +315,17 @@ function renderAll(allRows) {
   receitasEl.innerText = fmtBRL.format(receitas);
   despesasEl.innerText = fmtBRL.format(despesas);
   investimentosEl.innerText = fmtBRL.format(investimentos);
+}
 
-  renderCharts({ filteredRows });
+function renderAll(allRows) {
+  const filteredRows = computeFilteredRows(allRows);
+  renderTableAndKpis(filteredRows);
+  renderCharts(filteredRows);
 }
 
 /**
  * ==========
- * Dropdowns (Ano/Mês)
+ * Dropdown (Ano/Mês)
  * ==========
  */
 function setSelectValue(select, value) {
@@ -348,15 +346,14 @@ function ensureYearOptionsFromRows(allRows) {
 
   const sorted = Array.from(years).sort((a, b) => b - a);
 
-  // preservar valor atual se possível
   const prev = yearSelect.value || "all";
 
-  yearSelect.innerHTML = `<option value="all">Todos</option>` +
+  yearSelect.innerHTML =
+    `<option value="all">Todos</option>` +
     sorted.map(y => `<option value="${y}">${y}</option>`).join("");
 
-  // se o anterior era um ano que sumiu, volta para "all"
   const stillExists = prev === "all" || sorted.includes(Number(prev));
-  setSelectValue(yearSelect, stillExists ? prev : "all");
+  setSelectValue(yearSelect, stillExists ? prev : String(currentYear));
 }
 
 function setupDropdownListeners() {
@@ -416,7 +413,7 @@ document.getElementById("saveEdit").onclick = async () => {
 
 /**
  * ==========
- * Extra UI pills for type styling (optional)
+ * Type-pill CSS inject (optional)
  * ==========
  */
 (function injectTypePillCSS() {
@@ -448,10 +445,9 @@ document.getElementById("saveEdit").onclick = async () => {
  */
 setupDropdownListeners();
 
-// Defaults: ano atual, mês "Todos"
+// default: ano atual (como você pediu), mês = Todos
 selectedYear = new Date().getFullYear();
 selectedMonth = "all";
-if (yearSelect) yearSelect.value = String(selectedYear);
 if (monthSelect) monthSelect.value = "all";
 
 onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
@@ -469,13 +465,14 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
-  // monta os anos disponíveis com base nos lançamentos + ano atual
   ensureYearOptionsFromRows(allRows);
 
-  // garante que selectedYear sempre esteja coerente com o select
+  // set default do select pro ano atual (se existir), senão "Todos"
   if (yearSelect) {
-    const v = yearSelect.value;
-    selectedYear = v === "all" ? "all" : Number(v);
+    const currentYear = new Date().getFullYear();
+    const hasCurrentYear = Array.from(yearSelect.options).some(o => o.value === String(currentYear));
+    yearSelect.value = hasCurrentYear ? String(currentYear) : "all";
+    selectedYear = yearSelect.value === "all" ? "all" : Number(yearSelect.value);
   }
 
   renderAll(allRows);
