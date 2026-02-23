@@ -98,7 +98,7 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
-// Add form container (novo)
+// container do formulário
 const addFormEl = document.getElementById("addForm");
 
 // Inputs
@@ -112,13 +112,13 @@ const qtdAcoesEl = document.getElementById("qtdAcoes");
 const precoAcaoEl = document.getElementById("precoAcao");
 const investTotalEl = document.getElementById("investTotal");
 
-// Botões tipo + adicionar
+// Botões
 const btnReceita = document.getElementById("btnReceita");
 const btnDespesa = document.getElementById("btnDespesa");
 const btnInvest = document.getElementById("btnInvest");
 const btnAdd = document.getElementById("btnAdd");
 
-// Dropdown custom (Ano/Mês)
+// Dropdown (Ano/Mês)
 const yearDD = document.getElementById("yearDD");
 const yearMenu = document.getElementById("yearMenu");
 const yearValue = document.getElementById("yearValue");
@@ -146,7 +146,7 @@ let editId = null;
  */
 let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
-let currentAddType = null; // só define quando o usuário selecionar
+let currentAddType = null;
 
 /**
  * ==========
@@ -167,8 +167,6 @@ function showAddForm(show) {
 
 function setAddType(tipo) {
   currentAddType = tipo;
-
-  // AGORA: formulário inteiro só aparece depois de selecionar
   showAddForm(true);
 
   const isInvest = tipo === "investimento";
@@ -256,14 +254,13 @@ function getCachedQuoteForTicker(rawTicker) {
 
 /**
  * ==========
- * Invest: total automático
+ * Invest total auto
  * ==========
  */
 function getInvestTotal() {
   const qtd = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
-  const total = (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
-  return total;
+  return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
 }
 
 function updateInvestTotalUI() {
@@ -571,8 +568,6 @@ function wireDropdown(dd, btnEl, setOpen) {
  * Add
  * ==========
  */
-const ref = collection(db, "transactions");
-
 async function addCurrent() {
   const descricao = (descricaoEl?.value || "").trim();
   if (!descricao || !currentAddType) return;
@@ -646,11 +641,10 @@ function scheduleDailyQuoteUpdate() {
  * Wire UI
  * ==========
  */
-btnReceita.onclick = () => { setActiveTypeButton(btnReceita); setAddType("receita"); };
-btnDespesa.onclick = () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); };
-btnInvest.onclick = () => { setActiveTypeButton(btnInvest); setAddType("investimento"); };
-
-btnAdd.onclick = () => addCurrent();
+if (btnReceita) btnReceita.onclick = () => { setActiveTypeButton(btnReceita); setAddType("receita"); };
+if (btnDespesa) btnDespesa.onclick = () => { setActiveTypeButton(btnDespesa); setAddType("despesa"); };
+if (btnInvest) btnInvest.onclick = () => { setActiveTypeButton(btnInvest); setAddType("investimento"); };
+if (btnAdd) btnAdd.onclick = () => addCurrent();
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (document.activeElement?.tagName === "INPUT")) addCurrent();
@@ -661,7 +655,6 @@ document.addEventListener("keydown", (e) => {
  * Boot
  * ==========
  */
-// Esconde formulário no início (fica como você pediu)
 showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
 
