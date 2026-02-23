@@ -49,8 +49,18 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
-const yearSelect = document.getElementById("yearSelect");
-const monthSelect = document.getElementById("monthSelect");
+// Dropdown custom (Ano/Mês)
+const yearDD = document.getElementById("yearDD");
+const yearMenu = document.getElementById("yearMenu");
+const yearValue = document.getElementById("yearValue");
+const yearBtn = document.getElementById("yearBtn");
+
+const monthDD = document.getElementById("monthDD");
+const monthMenu = document.getElementById("monthMenu");
+const monthValue = document.getElementById("monthValue");
+const monthBtn = document.getElementById("monthBtn");
+
+const clearFiltersBtn = document.getElementById("clearFilters");
 
 /**
  * ==========
@@ -64,10 +74,9 @@ let editId = null;
  * ==========
  * Filter state
  * ==========
- * "all" => geral
  */
-let selectedYear = "all";   // "all" | number
-let selectedMonth = "all";  // "all" | 0..11
+let selectedYear = new Date().getFullYear(); // default: ano atual
+let selectedMonth = "all"; // "all" | 0..11
 
 /**
  * ==========
@@ -121,15 +130,9 @@ const glowPlugin = {
 function computeFilteredRows(allRows) {
   return allRows.filter(r => {
     const d = clampDate(r.createdAt);
-
-    if (!d) {
-      if (selectedYear !== "all" || selectedMonth !== "all") return false;
-      return true;
-    }
-
-    if (selectedYear !== "all" && d.getFullYear() !== selectedYear) return false;
+    if (!d) return false;
+    if (d.getFullYear() !== selectedYear) return false;
     if (selectedMonth !== "all" && d.getMonth() !== selectedMonth) return false;
-
     return true;
   });
 }
@@ -145,17 +148,13 @@ function renderCharts(filteredRows) {
   const lineCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
 
-  // LINE:
-  // - Ano+Mês => por dia
-  // - Caso contrário => por mês (jan..dez) dentro do recorte atual
   let labels = [];
   let receitaSeries = [];
   let despesaSeries = [];
 
-  const hasFixedYear = selectedYear !== "all";
   const hasFixedMonth = selectedMonth !== "all";
 
-  if (hasFixedYear && hasFixedMonth) {
+  if (hasFixedMonth) {
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
 
@@ -188,7 +187,6 @@ function renderCharts(filteredRows) {
     despesaSeries = byMonthDespesa;
   }
 
-  // PIE:
   let receitas = 0, despesas = 0, investimentos = 0;
   filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
@@ -325,53 +323,39 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown (Ano/Mês)
+ * Dropdown custom
  * ==========
  */
-function setSelectValue(select, value) {
-  if (!select) return;
-  select.value = String(value);
+function setDDOpen(dd, open) {
+  if (!dd) return;
+  dd.classList.toggle("is-open", open);
+  const btn = dd.querySelector(".dd-btn");
+  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
-function ensureYearOptionsFromRows(allRows) {
-  if (!yearSelect) return;
+function buildMenu(menuEl, items, activeValue, onPick) {
+  menuEl.innerHTML = "";
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "dd-item" + (String(item.value) === String(activeValue) ? " is-active" : "");
+    div.setAttribute("role", "option");
+    div.dataset.value = String(item.value);
+    div.innerHTML = `<span class="mini-dot" aria-hidden="true"></span><span>${item.label}</span>`;
+    div.onclick = () => onPick(item.value, item.label);
+    menuEl.appendChild(div);
+  });
+}
 
-  const currentYear = new Date().getFullYear();
-  const years = new Set([currentYear]);
-
-  allRows.forEach(r => {
-    const d = clampDate(r.createdAt);
-    if (d) years.add(d.getFullYear());
+function wireDropdown(dd, btnEl, setOpen) {
+  btnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setOpen(!dd.classList.contains("is-open"));
   });
 
-  const sorted = Array.from(years).sort((a, b) => b - a);
-
-  const prev = yearSelect.value || "all";
-
-  yearSelect.innerHTML =
-    `<option value="all">Todos</option>` +
-    sorted.map(y => `<option value="${y}">${y}</option>`).join("");
-
-  const stillExists = prev === "all" || sorted.includes(Number(prev));
-  setSelectValue(yearSelect, stillExists ? prev : String(currentYear));
-}
-
-function setupDropdownListeners() {
-  if (yearSelect) {
-    yearSelect.addEventListener("change", () => {
-      const v = yearSelect.value;
-      selectedYear = v === "all" ? "all" : Number(v);
-      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
-    });
-  }
-
-  if (monthSelect) {
-    monthSelect.addEventListener("change", () => {
-      const v = monthSelect.value;
-      selectedMonth = v === "all" ? "all" : Number(v);
-      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
-    });
-  }
+  document.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setOpen(false);
+  });
 }
 
 /**
@@ -385,12 +369,7 @@ async function add(tipo) {
 
   if (!descricao || !Number.isFinite(valor) || valor <= 0) return;
 
-  await addDoc(ref, {
-    descricao,
-    valor,
-    tipo,
-    createdAt: serverTimestamp()
-  });
+  await addDoc(ref, { descricao, valor, tipo, createdAt: serverTimestamp() });
 
   document.getElementById("descricao").value = "";
   document.getElementById("valor").value = "";
@@ -413,7 +392,7 @@ document.getElementById("saveEdit").onclick = async () => {
 
 /**
  * ==========
- * Type-pill CSS inject (optional)
+ * Type-pill CSS inject
  * ==========
  */
 (function injectTypePillCSS() {
@@ -443,12 +422,30 @@ document.getElementById("saveEdit").onclick = async () => {
  * Boot
  * ==========
  */
-setupDropdownListeners();
+yearValue.textContent = String(selectedYear);
+monthValue.textContent = "Todos";
 
-// default: ano atual (como você pediu), mês = Todos
-selectedYear = new Date().getFullYear();
-selectedMonth = "all";
-if (monthSelect) monthSelect.value = "all";
+wireDropdown(yearDD, yearBtn, (open) => {
+  setDDOpen(yearDD, open);
+  setDDOpen(monthDD, false);
+});
+
+wireDropdown(monthDD, monthBtn, (open) => {
+  setDDOpen(monthDD, open);
+  setDDOpen(yearDD, false);
+});
+
+if (clearFiltersBtn) {
+  clearFiltersBtn.onclick = () => {
+    selectedYear = new Date().getFullYear();
+    selectedMonth = "all";
+    yearValue.textContent = String(selectedYear);
+    monthValue.textContent = "Todos";
+    setDDOpen(yearDD, false);
+    setDDOpen(monthDD, false);
+    if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
+  };
+}
 
 onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
   const allRows = [];
@@ -465,15 +462,42 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
-  ensureYearOptionsFromRows(allRows);
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+  allRows.forEach(r => {
+    const d = clampDate(r.createdAt);
+    if (d) years.add(d.getFullYear());
+  });
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
 
-  // set default do select pro ano atual (se existir), senão "Todos"
-  if (yearSelect) {
-    const currentYear = new Date().getFullYear();
-    const hasCurrentYear = Array.from(yearSelect.options).some(o => o.value === String(currentYear));
-    yearSelect.value = hasCurrentYear ? String(currentYear) : "all";
-    selectedYear = yearSelect.value === "all" ? "all" : Number(yearSelect.value);
-  }
+  // garante selectedYear existente; senão usa ano atual
+  if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
 
+  buildMenu(
+    yearMenu,
+    sortedYears.map(y => ({ value: y, label: String(y) })),
+    selectedYear,
+    (value, label) => {
+      selectedYear = Number(value);
+      yearValue.textContent = label;
+      setDDOpen(yearDD, false);
+      renderAll(window.__ALL_ROWS__);
+    }
+  );
+
+  buildMenu(
+    monthMenu,
+    [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
+    selectedMonth,
+    (value, label) => {
+      selectedMonth = value === "all" ? "all" : Number(value);
+      monthValue.textContent = label;
+      setDDOpen(monthDD, false);
+      renderAll(window.__ALL_ROWS__);
+    }
+  );
+
+  // Atualiza label inicial após rebuild do menu
+  yearValue.textContent = String(selectedYear);
   renderAll(allRows);
 });
