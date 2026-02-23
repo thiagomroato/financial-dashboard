@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=42"/>
+  <link rel="stylesheet" href="style.css?v=43"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -21,7 +21,32 @@
         </div>
       </div>
 
+      <!-- Escolha do tipo (fica sempre visível) -->
       <div class="sidebar-section">
+        <div class="section-title">Tipo de lançamento</div>
+
+        <div class="btn-group" role="group" aria-label="Escolher tipo do lançamento">
+          <button id="btnReceita" class="btn receita" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Receita
+          </button>
+          <button id="btnDespesa" class="btn despesa" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Despesa
+          </button>
+          <button id="btnInvest" class="btn invest" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Investimento
+          </button>
+        </div>
+
+        <p class="sidebar-hint">
+          Selecione um tipo para liberar o formulário.
+        </p>
+      </div>
+
+      <!-- Formulário de adicionar (fica oculto até selecionar tipo) -->
+      <div class="sidebar-section" id="addForm" style="display:none;">
         <div class="section-title">Adicionar lançamento</div>
 
         <label class="field">
@@ -63,39 +88,17 @@
           </p>
         </div>
 
-        <!-- Escolha do tipo (não salva) -->
-        <div class="btn-group" role="group" aria-label="Escolher tipo do lançamento">
-          <button id="btnReceita" class="btn receita" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Receita
-          </button>
-          <button id="btnDespesa" class="btn despesa" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Despesa
-          </button>
-          <button id="btnInvest" class="btn invest" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Investimento
-          </button>
-        </div>
-
-        <!-- Botão único para salvar (fica escondido até selecionar tipo) -->
-        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px; display:none;">
+        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px;">
           ADICIONAR LANÇAMENTO
         </button>
-
-        <p class="sidebar-hint">
-          Selecione o tipo e depois clique em <b>ADICIONAR LANÇAMENTO</b>.
-        </p>
       </div>
 
-      <!-- PERÍODO (dropdown custom com glow) -->
+      <!-- PERÍODO -->
       <div class="sidebar-section">
         <div class="section-title">Período</div>
 
         <div class="field">
           <span class="field-label">Ano</span>
-
           <div class="dd dd--blue" id="yearDD">
             <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dd-dot" aria-hidden="true"></span>
@@ -108,7 +111,6 @@
 
         <div class="field">
           <span class="field-label">Mês</span>
-
           <div class="dd dd--purple" id="monthDD">
             <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dd-dot" aria-hidden="true"></span>
