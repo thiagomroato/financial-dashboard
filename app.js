@@ -15,16 +15,12 @@ import {
  * =====================
  * CONFIG (Alpha Vantage)
  * =====================
- * ATENÇÃO: isto expõe sua API key no front-end.
- * Para produção, o ideal é Cloud Functions/proxy.
  */
 const ALPHAVANTAGE_KEY = "5Y1WYBEULZVJSV9U";
 const AV_BASE = "https://www.alphavantage.co/query";
 const AV_FUNCTION = "GLOBAL_QUOTE";
 
-/**
- * Atualização automática diária às 10:00:00 (horário local do browser)
- */
+// Atualiza��ão diária 10:00:00 (local do browser)
 const DAILY_QUOTE_HOUR = 10;
 const DAILY_QUOTE_MINUTE = 0;
 const DAILY_QUOTE_SECOND = 0;
@@ -62,36 +58,30 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-const monthNames = [
-  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
-];
-
 function normalizeTicker(raw) {
   return String(raw || "").trim().toUpperCase();
 }
 
 function isBrazilLikeTicker(ticker) {
-  // Heurística simples: PETR4, VALE3, ITUB4 etc => tem número no fim
   return /[0-9]$/.test(ticker) || ticker.endsWith(".SA");
 }
 
-function toAlphaVantageSymbol(rawTicker) {
-  // Se usuário já informou com sufixo (ex: PETR4.SA), mantém.
+function toAlphaVantageSymbolCandidates(rawTicker) {
   const t = normalizeTicker(rawTicker);
   if (!t) return [];
 
-  // Tenta uma lista de símbolos:
-  // - Se é BR: tenta ".SA" e depois cru
-  // - Se é US: tenta cru e depois ".SA" (caso usuário tenha digitado ticker BR sem número)
   if (isBrazilLikeTicker(t)) {
     const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
-    const uniq = Array.from(new Set([withSA, t]));
-    return uniq;
+    return Array.from(new Set([withSA, t]));
   }
 
   return Array.from(new Set([t, `${t}.SA`]));
 }
+
+const monthNames = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+];
 
 /**
  * ==========
@@ -108,7 +98,6 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
-// Inputs principais
 const descricaoEl = document.getElementById("descricao");
 const valorEl = document.getElementById("valor");
 
@@ -118,6 +107,12 @@ const tickerEl = document.getElementById("ticker");
 const qtdAcoesEl = document.getElementById("qtdAcoes");
 const precoAcaoEl = document.getElementById("precoAcao");
 const investTotalEl = document.getElementById("investTotal");
+
+// Botões tipo + adicionar
+const btnReceita = document.getElementById("btnReceita");
+const btnDespesa = document.getElementById("btnDespesa");
+const btnInvest = document.getElementById("btnInvest");
+const btnAdd = document.getElementById("btnAdd");
 
 // Dropdown custom (Ano/Mês)
 const yearDD = document.getElementById("yearDD");
@@ -142,12 +137,11 @@ let editId = null;
 
 /**
  * ==========
- * State (filtro)
+ * State
  * ==========
  */
 let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
-
 let currentAddType = "receita";
 
 /**
@@ -155,18 +149,11 @@ let currentAddType = "receita";
  * Alpha Vantage cache
  * ==========
  */
-const quoteCache = new Map();
-/**
- * quoteCache.get(symbol) = { price, updatedAt }
- */
-const QUOTE_TTL_MS = 24 * 60 * 60 * 1000; // 24h (como você quer atualizar 1x por dia)
+const quoteCache = new Map(); // symbol => { price, updatedAt }
+const QUOTE_TTL_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Busca uma cotação de um símbolo específico do Alpha Vantage (GLOBAL_QUOTE).
- */
 async function fetchQuoteForSymbol(symbol) {
   const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
-
   const res = await fetch(url);
   const data = await res.json();
 
@@ -176,22 +163,17 @@ async function fetchQuoteForSymbol(symbol) {
 
   const quote = data?.["Global Quote"];
   const price = Number(quote?.["05. price"]);
-
   if (!Number.isFinite(price) || price <= 0) return null;
+
   return price;
 }
 
-/**
- * Busca cotação tentando múltiplos símbolos (BR/US), com cache.
- * Retorna { symbolUsed, price } ou null.
- */
 async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
-  const candidates = toAlphaVantageSymbol(rawTicker);
+  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
   if (!candidates.length) return null;
 
   const now = Date.now();
 
-  // Se já tem cache válido para algum candidato e não é force, usa.
   if (!force) {
     for (const sym of candidates) {
       const cached = quoteCache.get(sym);
@@ -201,7 +183,6 @@ async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
     }
   }
 
-  // Caso contrário tenta buscar
   for (const sym of candidates) {
     try {
       const price = await fetchQuoteForSymbol(sym);
@@ -210,21 +191,14 @@ async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
         return { symbolUsed: sym, price };
       }
     } catch (e) {
-      console.warn("Cotação falhou para", sym, e?.message || e);
-      // tenta próximo candidato
+      console.warn("Cotação falhou:", sym, e?.message || e);
     }
-
-    // pequena pausa para respeitar limite
-    await sleep(300);
+    await sleep(350);
   }
 
   return null;
 }
 
-/**
- * Atualiza cotações para os investimentos do recorte atual (ano/mês).
- * "force=true" para atualizar mesmo se tiver cache.
- */
 async function updateQuotesForInvestments(rows, { force = false } = {}) {
   const tickers = Array.from(new Set(
     rows
@@ -233,16 +207,24 @@ async function updateQuotesForInvestments(rows, { force = false } = {}) {
       .filter(Boolean)
   ));
 
-  // Busca um por um (evita estourar limite)
   for (const t of tickers) {
     await fetchAlphaVantageQuoteSmart(t, { force });
     await sleep(350);
   }
 }
 
+function getCachedQuoteForTicker(rawTicker) {
+  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
+  for (const sym of candidates) {
+    const cached = quoteCache.get(sym);
+    if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
+  }
+  return null;
+}
+
 /**
  * ==========
- * Invest: total automático (qtd * preço)
+ * Invest: total automático
  * ==========
  */
 function getInvestTotal() {
@@ -253,9 +235,8 @@ function getInvestTotal() {
 }
 
 function updateInvestTotalUI() {
-  if (!investTotalEl) return;
   const total = getInvestTotal();
-  investTotalEl.textContent = brl(total);
+  if (investTotalEl) investTotalEl.textContent = brl(total);
   if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
 }
 
@@ -271,7 +252,7 @@ if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
 
 /**
  * ==========
- * Charts (igual)
+ * Charts
  * ==========
  */
 let lineChart = null;
@@ -404,9 +385,7 @@ function renderCharts(filteredRows) {
             backgroundColor: "rgba(2,6,23,.92)",
             borderColor: "rgba(255,255,255,.10)",
             borderWidth: 1,
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${brl(ctx.parsed.y || 0)}`
-            }
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${brl(ctx.parsed.y || 0)}` }
           }
         },
         scales: {
@@ -419,7 +398,6 @@ function renderCharts(filteredRows) {
   }
 
   if (pieCtx) {
-    // Pie continua por valor de compra (você pode trocar para valor atual depois)
     pieChart = new Chart(pieCtx, {
       type: "doughnut",
       data: {
@@ -440,9 +418,7 @@ function renderCharts(filteredRows) {
         responsive: true,
         maintainAspectRatio: false,
         cutout: "68%",
-        plugins: {
-          legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } }
-        }
+        plugins: { legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } } }
       }
     });
   }
@@ -450,18 +426,9 @@ function renderCharts(filteredRows) {
 
 /**
  * ==========
- * Table + KPIs (com cotação atual)
+ * Table + KPIs (com qtd/preço e valor atual)
  * ==========
  */
-function getCachedPriceForTicker(rawTicker) {
-  const candidates = toAlphaVantageSymbol(rawTicker);
-  for (const sym of candidates) {
-    const cached = quoteCache.get(sym);
-    if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
-  }
-  return null;
-}
-
 function renderTableAndKpis(filteredRows) {
   let receitas = 0, despesas = 0, investimentos = 0;
   tabela.innerHTML = "";
@@ -479,7 +446,7 @@ function renderTableAndKpis(filteredRows) {
     let quoteLine = `<span class="muted">Cotação: --</span>`;
 
     if (r.tipo === "investimento" && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
-      const q = getCachedPriceForTicker(r.ticker);
+      const q = getCachedQuoteForTicker(r.ticker);
       if (q?.price) {
         valorAtual = r.qtdAcoes * q.price;
         pl = valorAtual - r.valor;
@@ -488,7 +455,7 @@ function renderTableAndKpis(filteredRows) {
       }
     }
 
-    const det =
+    const desc =
       r.tipo === "investimento"
         ? `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)}`
         : (r.descricao ?? "");
@@ -507,7 +474,7 @@ function renderTableAndKpis(filteredRows) {
       : brl(r.valor);
 
     tr.innerHTML = `
-      <td>${det}</td>
+      <td>${desc}</td>
       <td><span class="type-pill type-${r.tipo}">${r.tipo}</span></td>
       <td>${valorCell}</td>
       <td>
@@ -570,34 +537,31 @@ function wireDropdown(dd, btnEl, setOpen) {
     e.stopPropagation();
     setOpen(!dd.classList.contains("is-open"));
   });
-
   document.addEventListener("click", () => setOpen(false));
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setOpen(false);
-  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 }
 
 /**
  * ==========
- * Add / Edit
+ * Add (AGORA SEMPRE SALVA CERTO)
  * ==========
  */
-async function add(tipo) {
+async function addCurrent() {
   const descricao = (descricaoEl?.value || "").trim();
+  if (!descricao) return;
 
-  if (tipo === "investimento") {
+  if (currentAddType === "investimento") {
     const ticker = normalizeTicker(tickerEl?.value || "");
     const qtd = Number(qtdAcoesEl?.value || 0);
     const preco = Number(precoAcaoEl?.value || 0);
     const total = qtd * preco;
 
-    if (!descricao) return;
     if (!Number.isFinite(qtd) || qtd <= 0) return;
     if (!Number.isFinite(preco) || preco <= 0) return;
 
     await addDoc(ref, {
       descricao,
-      tipo,
+      tipo: "investimento",
       ticker,
       qtdAcoes: qtd,
       precoAcao: preco,
@@ -615,51 +579,54 @@ async function add(tipo) {
   }
 
   const valor = Number(valorEl?.value || 0);
-  if (!descricao || !Number.isFinite(valor) || valor <= 0) return;
+  if (!Number.isFinite(valor) || valor <= 0) return;
 
-  await addDoc(ref, { descricao, valor, tipo, createdAt: serverTimestamp() });
+  await addDoc(ref, { descricao, valor, tipo: currentAddType, createdAt: serverTimestamp() });
   descricaoEl.value = "";
   valorEl.value = "";
 }
 
-document.getElementById("btnReceita").onclick = () => { setAddType("receita"); add("receita"); };
-document.getElementById("btnDespesa").onclick = () => { setAddType("despesa"); add("despesa"); };
-document.getElementById("btnInvest").onclick = () => { setAddType("investimento"); add("investimento"); };
-document.getElementById("btnInvest").addEventListener("click", () => setAddType("investimento"));
-
 /**
  * ==========
- * Scheduler: roda diariamente às 10:00:00 AM
+ * Scheduler 10:00:00
  * ==========
  */
 function msUntilNextTenAM() {
   const now = new Date();
   const next = new Date(now);
   next.setHours(DAILY_QUOTE_HOUR, DAILY_QUOTE_MINUTE, DAILY_QUOTE_SECOND, 0);
-
-  // se já passou das 10:00 hoje, agenda para amanhã
   if (next <= now) next.setDate(next.getDate() + 1);
-
   return next.getTime() - now.getTime();
 }
 
 function scheduleDailyQuoteUpdate() {
   const delay = msUntilNextTenAM();
-
   setTimeout(async () => {
     try {
       if (window.__ALL_ROWS__) {
         const filtered = computeFilteredRows(window.__ALL_ROWS__);
-        // force=true para atualizar mesmo com cache
         await updateQuotesForInvestments(filtered, { force: true });
         renderAll(window.__ALL_ROWS__);
       }
     } finally {
-      // agenda de novo para o próximo dia
       scheduleDailyQuoteUpdate();
     }
   }, delay);
 }
+
+/**
+ * ==========
+ * Wire UI
+ * ==========
+ */
+btnReceita.onclick = () => setAddType("receita");
+btnDespesa.onclick = () => setAddType("despesa");
+btnInvest.onclick = () => setAddType("investimento");
+btnAdd.onclick = () => addCurrent();
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (document.activeElement?.tagName === "INPUT")) addCurrent();
+});
 
 /**
  * ==========
@@ -699,7 +666,6 @@ if (clearFiltersBtn) {
   };
 }
 
-// agenda atualização diária 10:00 (local)
 scheduleDailyQuoteUpdate();
 
 onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
@@ -720,7 +686,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
-  // Menus Ano/Mês
+  // anos para o menu
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
@@ -762,7 +728,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   yearValue.textContent = String(selectedYear);
 
-  // Atualiza cache (sem force) e renderiza
+  // atualiza cotações e renderiza
   const filtered = computeFilteredRows(allRows);
   await updateQuotesForInvestments(filtered, { force: false });
   renderAll(allRows);
