@@ -18,19 +18,21 @@ import {
  */
 const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
+function toDateMaybe(ts) {
+  if (!ts) return null;
+  if (ts instanceof Date) return ts;
+  if (typeof ts.toDate === "function") return ts.toDate();
+  return null;
+}
+
 function clampDate(d) {
-  return d instanceof Date && !isNaN(d) ? d : new Date();
+  return d instanceof Date && !isNaN(d) ? d : null;
 }
 
 const monthNames = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
-
-function monthIndexFromLabel(label) {
-  const idx = monthNames.findIndex(m => m.toLowerCase() === String(label).toLowerCase());
-  return idx >= 0 ? idx : null;
-}
 
 /**
  * ==========
@@ -47,6 +49,9 @@ const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
 
+const yearSelect = document.getElementById("yearSelect");
+const monthSelect = document.getElementById("monthSelect");
+
 /**
  * ==========
  * Firestore
@@ -57,11 +62,12 @@ let editId = null;
 
 /**
  * ==========
- * UI state (somente para o modo do gráfico, não filtra dados)
+ * Filter state
  * ==========
+ * "all" => geral
  */
-let selectedYear = null;  // number | null
-let selectedMonth = null; // 0-11 | null
+let selectedYear = "all";   // "all" | number
+let selectedMonth = "all";  // "all" | 0..11
 
 /**
  * ==========
@@ -111,7 +117,23 @@ const glowPlugin = {
   }
 };
 
-function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
+function computeFilteredRows(allRows) {
+  return allRows.filter(r => {
+    const d = clampDate(r.createdAt);
+    if (!d) {
+      // Se não tem createdAt, mantém no geral; mas se usuário escolher ano/mês, exclui
+      if (selectedYear !== "all" || selectedMonth !== "all") return false;
+      return true;
+    }
+
+    if (selectedYear !== "all" && d.getFullYear() !== selectedYear) return false;
+    if (selectedMonth !== "all" && d.getMonth() !== selectedMonth) return false;
+
+    return true;
+  });
+}
+
+function renderCharts({ filteredRows }) {
   chartDefaults();
 
   const blue = "rgba(109,124,255,1)";
@@ -122,27 +144,25 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
   const barCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
 
-  // Modo do gráfico:
-  // - se selectedMonth != null => agrega por dia (usando o ano selecionado, ou ano atual)
-  // - caso contrário => agrega geral por mês (todas as transações, qualquer ano)
+  // BAR/LINE:
+  // - Se mês selecionado e ano selecionado => agrega por dia
+  // - Caso contrário => agrega por mês (jan..dez) dentro do recorte atual
   let labels = [];
   let receitaSeries = [];
   let despesaSeries = [];
 
-  if (selectedMonth != null) {
-    const y = selectedYear ?? new Date().getFullYear();
-    const daysInMonth = new Date(y, selectedMonth + 1, 0).getDate();
+  const hasFixedMonth = selectedMonth !== "all";
+  const hasFixedYear = selectedYear !== "all";
 
+  if (hasFixedMonth && hasFixedYear) {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+
     const byDay = Array.from({ length: daysInMonth }, () => ({ receita: 0, despesa: 0 }));
 
-    // IMPORTANTE: não filtra; só agrega os que caem nesse mês/ano para o gráfico de dias
-    rows.forEach(r => {
-      if (!r.createdAt) return;
+    filteredRows.forEach(r => {
       const d = clampDate(r.createdAt);
-      if (d.getFullYear() !== y) return;
-      if (d.getMonth() !== selectedMonth) return;
-
+      if (!d) return;
       const day = d.getDate() - 1;
       if (r.tipo === "receita") byDay[day].receita += r.valor;
       if (r.tipo === "despesa") byDay[day].despesa += r.valor;
@@ -152,9 +172,22 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
     despesaSeries = byDay.map(x => x.despesa);
   } else {
     labels = monthNames.map(m => m.slice(0, 3).toLowerCase());
+    const byMonthReceita = Array.from({ length: 12 }, () => 0);
+    const byMonthDespesa = Array.from({ length: 12 }, () => 0);
+
+    filteredRows.forEach(r => {
+      const d = clampDate(r.createdAt);
+      if (!d) return;
+      const m = d.getMonth();
+      if (r.tipo === "receita") byMonthReceita[m] += r.valor;
+      if (r.tipo === "despesa") byMonthDespesa[m] += r.valor;
+    });
+
     receitaSeries = byMonthReceita;
     despesaSeries = byMonthDespesa;
   }
+
+  destroyCharts();
 
   if (barCtx) {
     barChartInstance = new Chart(barCtx, {
@@ -183,10 +216,7 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
           }
         },
         scales: {
-          x: {
-            grid: { color: "rgba(255,255,255,.04)" },
-            ticks: { color: "rgba(229,231,235,.55)" }
-          },
+          x: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "rgba(229,231,235,.55)" } },
           y: {
             grid: { color: "rgba(255,255,255,.06)" },
             ticks: {
@@ -204,13 +234,21 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
     });
   }
 
+  // PIE:
+  let receitas = 0, despesas = 0, investimentos = 0;
+  filteredRows.forEach(r => {
+    if (r.tipo === "receita") receitas += r.valor;
+    if (r.tipo === "despesa") despesas += r.valor;
+    if (r.tipo === "investimento") investimentos += r.valor;
+  });
+
   if (pieCtx) {
     pieChartInstance = new Chart(pieCtx, {
       type: "doughnut",
       data: {
         labels: ["Receita", "Despesa", "Investimento"],
         datasets: [{
-          data: pieData,
+          data: [receitas, despesas, investimentos],
           backgroundColor: [
             blue.replace("1)", "0.9)"),
             amber.replace("1)", "0.9)"),
@@ -244,74 +282,16 @@ function renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData }) {
   }
 }
 
-/**
- * ==========
- * Pills: agora não filtram Firestore, só mudam o "modo" do gráfico
- * ==========
- */
-function setupPills() {
-  const yearPills = Array.from(document.querySelectorAll('[aria-label="Anos"] .pill'));
-  const monthPills = Array.from(document.querySelectorAll('[aria-label="Meses"] .pill'));
+function renderAll(allRows) {
+  const filteredRows = computeFilteredRows(allRows);
 
-  const now = new Date();
-  selectedYear = Number(yearPills.find(p => p.classList.contains("is-active"))?.textContent) || now.getFullYear();
-  selectedMonth = monthIndexFromLabel(monthPills.find(p => p.classList.contains("is-active"))?.textContent);
-
-  function setActive(pills, activeEl) {
-    pills.forEach(p => p.classList.toggle("is-active", p === activeEl));
-  }
-
-  yearPills.forEach(p => {
-    p.addEventListener("click", () => {
-      selectedYear = Number(p.textContent) || now.getFullYear();
-      setActive(yearPills, p);
-      // só re-renderiza charts (dados já estão em memória via snapshot)
-      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
-    });
-  });
-
-  monthPills.forEach(p => {
-    p.addEventListener("click", () => {
-      selectedMonth = monthIndexFromLabel(p.textContent);
-      setActive(monthPills, p);
-      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
-    });
-  });
-
-  monthPills.forEach(p => {
-    p.addEventListener("dblclick", () => {
-      selectedMonth = null;
-      monthPills.forEach(x => x.classList.remove("is-active"));
-      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
-    });
-  });
-}
-
-/**
- * ==========
- * Render KPIs / table / chart aggregations (GERAL)
- * ==========
- */
-function renderAll(rows) {
   let receitas = 0, despesas = 0, investimentos = 0;
-
-  // Geral por mês (todas as transações, todos os anos)
-  const byMonthReceita = Array.from({ length: 12 }, () => 0);
-  const byMonthDespesa = Array.from({ length: 12 }, () => 0);
-
   tabela.innerHTML = "";
 
-  rows.forEach(r => {
+  filteredRows.forEach(r => {
     if (r.tipo === "receita") receitas += r.valor;
     if (r.tipo === "despesa") despesas += r.valor;
     if (r.tipo === "investimento") investimentos += r.valor;
-
-    // para o gráfico geral por mês, usa o mês do createdAt
-    if (r.createdAt) {
-      const m = clampDate(r.createdAt).getMonth();
-      if (r.tipo === "receita") byMonthReceita[m] += r.valor;
-      if (r.tipo === "despesa") byMonthDespesa[m] += r.valor;
-    }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -342,10 +322,59 @@ function renderAll(rows) {
   despesasEl.innerText = fmtBRL.format(despesas);
   investimentosEl.innerText = fmtBRL.format(investimentos);
 
-  const pieData = [receitas, despesas, investimentos];
+  renderCharts({ filteredRows });
+}
 
-  destroyCharts();
-  renderCharts({ rows, byMonthReceita, byMonthDespesa, pieData });
+/**
+ * ==========
+ * Dropdowns (Ano/Mês)
+ * ==========
+ */
+function setSelectValue(select, value) {
+  if (!select) return;
+  select.value = String(value);
+}
+
+function ensureYearOptionsFromRows(allRows) {
+  if (!yearSelect) return;
+
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+
+  allRows.forEach(r => {
+    const d = clampDate(r.createdAt);
+    if (d) years.add(d.getFullYear());
+  });
+
+  const sorted = Array.from(years).sort((a, b) => b - a);
+
+  // preservar valor atual se possível
+  const prev = yearSelect.value || "all";
+
+  yearSelect.innerHTML = `<option value="all">Todos</option>` +
+    sorted.map(y => `<option value="${y}">${y}</option>`).join("");
+
+  // se o anterior era um ano que sumiu, volta para "all"
+  const stillExists = prev === "all" || sorted.includes(Number(prev));
+  setSelectValue(yearSelect, stillExists ? prev : "all");
+}
+
+function setupDropdownListeners() {
+  if (yearSelect) {
+    yearSelect.addEventListener("change", () => {
+      const v = yearSelect.value;
+      selectedYear = v === "all" ? "all" : Number(v);
+      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
+    });
+  }
+
+  if (monthSelect) {
+    monthSelect.addEventListener("change", () => {
+      const v = monthSelect.value;
+      selectedMonth = v === "all" ? "all" : Number(v);
+      if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
+    });
+  }
 }
 
 /**
@@ -414,26 +443,40 @@ document.getElementById("saveEdit").onclick = async () => {
 
 /**
  * ==========
- * Boot (GERAL)
+ * Boot
  * ==========
  */
-setupPills();
+setupDropdownListeners();
+
+// Defaults: ano atual, mês "Todos"
+selectedYear = new Date().getFullYear();
+selectedMonth = "all";
+if (yearSelect) yearSelect.value = String(selectedYear);
+if (monthSelect) monthSelect.value = "all";
 
 onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
-  const rows = [];
+  const allRows = [];
   snapshot.forEach(docItem => {
     const data = docItem.data();
-    rows.push({
+    allRows.push({
       id: docItem.id,
       descricao: data.descricao,
       tipo: data.tipo,
       valor: Number(data.valor || 0),
-      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null
+      createdAt: toDateMaybe(data.createdAt)
     });
   });
 
-  // cache em memória para re-render ao clicar nas pills
-  window.__ALL_ROWS__ = rows;
+  window.__ALL_ROWS__ = allRows;
 
-  renderAll(rows);
+  // monta os anos disponíveis com base nos lançamentos + ano atual
+  ensureYearOptionsFromRows(allRows);
+
+  // garante que selectedYear sempre esteja coerente com o select
+  if (yearSelect) {
+    const v = yearSelect.value;
+    selectedYear = v === "all" ? "all" : Number(v);
+  }
+
+  renderAll(allRows);
 });
