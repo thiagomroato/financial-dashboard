@@ -118,7 +118,7 @@ const btnDespesa = document.getElementById("btnDespesa");
 const btnInvest = document.getElementById("btnInvest");
 const btnAdd = document.getElementById("btnAdd");
 
-// Dropdown (Ano/Mês) - podem não existir dependendo do seu HTML
+// Dropdown (Ano/Mês)
 const yearDD = document.getElementById("yearDD");
 const yearMenu = document.getElementById("yearMenu");
 const yearValue = document.getElementById("yearValue");
@@ -135,6 +135,7 @@ const clearFiltersBtn = document.getElementById("clearFilters");
  * ==========
  * Firestore
  * ==========
+ * (APENAS UMA VEZ!)
  */
 const ref = collection(db, "transactions");
 let editId = null;
@@ -179,8 +180,6 @@ function updateInvestTotalUI() {
 
 function setAddType(tipo) {
   currentAddType = tipo;
-
-  console.log("tipo selecionado:", tipo); // DEBUG
 
   // mostra formulário quando selecionar tipo
   showAddForm(true);
