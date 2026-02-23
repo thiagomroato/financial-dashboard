@@ -1,67 +1,106 @@
 import { db } from "./firebase.js";
 import {
   collection,
-  onSnapshot
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  updateDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const transactionsRef = collection(db, "transactions");
+const ref = collection(db, "transactions");
 
-let entradas = 0;
-let despesas = 0;
+const receitasEl = document.getElementById("receitas");
+const despesasEl = document.getElementById("despesas");
+const investimentosEl = document.getElementById("investimentos");
+const saldoEl = document.getElementById("saldo");
+const lista = document.getElementById("lista");
 
-onSnapshot(transactionsRef, (snapshot) => {
+const descricaoInput = document.getElementById("descricao");
+const valorInput = document.getElementById("valor");
 
-  entradas = 0;
-  despesas = 0;
+const btnReceita = document.getElementById("btnReceita");
+const btnDespesa = document.getElementById("btnDespesa");
+const btnInvest = document.getElementById("btnInvest");
 
-  snapshot.forEach(doc => {
-    const data = doc.data();
-    if (data.tipo === "entrada") {
-      entradas += data.valor;
-    } else {
-      despesas += data.valor;
-    }
+let editId = null;
+
+async function add(tipo) {
+  const descricao = descricaoInput.value;
+  const valor = Number(valorInput.value);
+
+  if (!descricao || !valor) return;
+
+  await addDoc(ref, {
+    descricao,
+    valor,
+    tipo,
+    createdAt: serverTimestamp()
   });
 
-  document.getElementById("entradas").innerText = "R$ " + entradas.toFixed(2);
-  document.getElementById("despesas").innerText = "R$ " + despesas.toFixed(2);
-  document.getElementById("saldo").innerText = "R$ " + (entradas - despesas).toFixed(2);
+  descricaoInput.value = "";
+  valorInput.value = "";
+}
 
-  renderCharts();
+btnReceita.onclick = () => add("receita");
+btnDespesa.onclick = () => add("despesa");
+btnInvest.onclick = () => add("investimento");
 
+onSnapshot(ref, (snapshot) => {
+
+  let receitas = 0;
+  let despesas = 0;
+  let investimentos = 0;
+
+  lista.innerHTML = "";
+
+  snapshot.forEach(docItem => {
+    const data = docItem.data();
+
+    if (data.tipo === "receita") receitas += data.valor;
+    if (data.tipo === "despesa") despesas += data.valor;
+    if (data.tipo === "investimento") investimentos += data.valor;
+
+    const li = document.createElement("li");
+
+    li.innerHTML = `
+      <span>${data.descricao} - R$ ${data.valor.toFixed(2)} (${data.tipo})</span>
+      <div class="actions">
+        <button class="edit">Editar</button>
+        <button class="delete">Excluir</button>
+      </div>
+    `;
+
+    li.querySelector(".delete").onclick = async () => {
+      await deleteDoc(doc(db, "transactions", docItem.id));
+    };
+
+    li.querySelector(".edit").onclick = () => {
+      document.getElementById("modal").style.display = "flex";
+      document.getElementById("editDescricao").value = data.descricao;
+      document.getElementById("editValor").value = data.valor;
+      editId = docItem.id;
+    };
+
+    lista.appendChild(li);
+  });
+
+  receitasEl.innerText = "R$ " + receitas.toFixed(2);
+  despesasEl.innerText = "R$ " + despesas.toFixed(2);
+  investimentosEl.innerText = "R$ " + investimentos.toFixed(2);
+
+  saldoEl.innerText = "R$ " + (receitas - despesas).toFixed(2);
 });
 
-function renderCharts() {
+document.getElementById("saveEdit").onclick = async () => {
+  const novaDescricao = document.getElementById("editDescricao").value;
+  const novoValor = Number(document.getElementById("editValor").value);
 
-  new Chart(document.getElementById("barChart"), {
-    type: 'bar',
-    data: {
-      labels: ['Salário', 'Extras', 'Investimentos'],
-      datasets: [{
-        data: [15000, 3000, 3000]
-      }]
-    }
+  await updateDoc(doc(db, "transactions", editId), {
+    descricao: novaDescricao,
+    valor: novoValor
   });
 
-  new Chart(document.getElementById("pieChart"), {
-    type: 'doughnut',
-    data: {
-      labels: ['Moradia', 'Cartão', 'Lazer'],
-      datasets: [{
-        data: [3000, 1800, 900]
-      }]
-    }
-  });
-
-  new Chart(document.getElementById("lineChart"), {
-    type: 'line',
-    data: {
-      labels: ['Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-      datasets: [{
-        label: 'Saldo',
-        data: [1000, 2000, 1500, 3000, 2500, 4200]
-      }]
-    }
-  });
-
-}
+  document.getElementById("modal").style.display = "none";
+};
