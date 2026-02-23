@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard Finanças</title>
-  <link rel="stylesheet" href="style.css"/>
+
+  <link rel="stylesheet" href="./style.css?v=4"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
 <div class="layout">
@@ -15,21 +17,14 @@
   <aside class="sidebar">
     <h2>FABRIDATA</h2>
 
-    <div class="filter">
-      <label>Conta</label>
-      <select>
-        <option>Todas</option>
-      </select>
-    </div>
+    <input type="text" id="descricao" placeholder="Descrição"/>
+    <input type="number" id="valor" placeholder="Valor"/>
 
-    <div class="filter">
-      <label>Ano</label>
-      <select>
-        <option>2026</option>
-      </select>
+    <div class="btn-group">
+      <button id="btnReceita" class="btn receita">+ Receita</button>
+      <button id="btnDespesa" class="btn despesa">+ Despesa</button>
+      <button id="btnInvest" class="btn invest">+ Investimento</button>
     </div>
-
-    <button class="clear-btn">Limpar filtros</button>
   </aside>
 
   <!-- MAIN -->
@@ -37,48 +32,48 @@
 
     <h1>Dashboard Finanças Pessoais</h1>
 
-    <!-- KPI CARDS -->
     <div class="kpi-grid">
       <div class="kpi saldo">
         <h3>Saldo</h3>
         <p id="saldo">R$ 0</p>
       </div>
 
-      <div class="kpi entradas">
-        <h3>Entradas</h3>
-        <p id="entradas">R$ 0</p>
+      <div class="kpi">
+        <h3>Receitas</h3>
+        <p id="receitas">R$ 0</p>
       </div>
 
-      <div class="kpi despesas">
+      <div class="kpi">
         <h3>Despesas</h3>
         <p id="despesas">R$ 0</p>
       </div>
-    </div>
 
-    <!-- GRÁFICOS -->
-    <div class="charts-grid">
-      <div class="chart-card">
-        <h3>Top Entradas</h3>
-        <canvas id="barChart"></canvas>
-      </div>
-
-      <div class="chart-card">
-        <h3>Top Despesas</h3>
-        <canvas id="pieChart"></canvas>
+      <div class="kpi">
+        <h3>Investimentos</h3>
+        <p id="investimentos">R$ 0</p>
       </div>
     </div>
 
     <div class="chart-card full">
-      <h3>Evolução Mensal</h3>
-      <canvas id="lineChart"></canvas>
+      <h3>Lançamentos</h3>
+      <ul id="lista"></ul>
     </div>
 
   </main>
-
 </div>
 
-<script type="module" src="firebase.js"></script>
-<script type="module" src="app.js"></script>
+<!-- MODAL EDITAR -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <h3>Editar Lançamento</h3>
+    <input type="text" id="editDescricao"/>
+    <input type="number" id="editValor"/>
+    <button id="saveEdit">Salvar</button>
+  </div>
+</div>
+
+<script type="module" src="./firebase.js"></script>
+<script type="module" src="./app.js"></script>
 
 </body>
 </html>
