@@ -3,77 +3,214 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard Finanças</title>
+  <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="./style.css?v=4"/>
+  <link rel="stylesheet" href="style.css?v=20"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-
-<div class="layout">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <h2>FABRIDATA</h2>
-
-    <input type="text" id="descricao" placeholder="Descrição"/>
-    <input type="number" id="valor" placeholder="Valor"/>
-
-    <div class="btn-group">
-      <button id="btnReceita" class="btn receita">+ Receita</button>
-      <button id="btnDespesa" class="btn despesa">+ Despesa</button>
-      <button id="btnInvest" class="btn invest">+ Investimento</button>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main">
-
-    <h1>Dashboard Finanças Pessoais</h1>
-
-    <div class="kpi-grid">
-      <div class="kpi saldo">
-        <h3>Saldo</h3>
-        <p id="saldo">R$ 0</p>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true"></div>
+        <div class="brand-text">
+          <div class="brand-title">Dashboard</div>
+          <div class="brand-subtitle">Finanças Pessoais</div>
+        </div>
       </div>
 
-      <div class="kpi">
-        <h3>Receitas</h3>
-        <p id="receitas">R$ 0</p>
+      <div class="sidebar-section">
+        <div class="section-title">Adicionar lançamento</div>
+
+        <label class="field">
+          <span class="field-label">Descrição</span>
+          <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Valor</span>
+          <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal">
+        </label>
+
+        <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
+          <button id="btnReceita" class="btn receita" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Receita
+          </button>
+          <button id="btnDespesa" class="btn despesa" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Despesa
+          </button>
+          <button id="btnInvest" class="btn invest" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Investimento
+          </button>
+        </div>
       </div>
 
-      <div class="kpi">
-        <h3>Despesas</h3>
-        <p id="despesas">R$ 0</p>
+      <div class="sidebar-section">
+        <div class="section-title">Período</div>
+
+        <div class="pill-list" aria-label="Anos">
+          <button class="pill" type="button">2023</button>
+          <button class="pill" type="button">2024</button>
+          <button class="pill is-active" type="button">2025</button>
+        </div>
+
+        <div class="pill-list" aria-label="Meses">
+          <button class="pill is-active" type="button">Janeiro</button>
+          <button class="pill" type="button">Fevereiro</button>
+          <button class="pill" type="button">Março</button>
+          <button class="pill" type="button">Abril</button>
+          <button class="pill" type="button">Maio</button>
+          <button class="pill" type="button">Junho</button>
+          <button class="pill" type="button">Julho</button>
+          <button class="pill" type="button">Agosto</button>
+          <button class="pill" type="button">Setembro</button>
+          <button class="pill" type="button">Outubro</button>
+          <button class="pill" type="button">Novembro</button>
+          <button class="pill" type="button">Dezembro</button>
+        </div>
+
+        <p class="sidebar-hint">
+          (Os filtros acima são visuais. Se quiser, eu adapto o <code>app.js</code> para filtrar por mês/ano.)
+        </p>
       </div>
+    </aside>
 
-      <div class="kpi">
-        <h3>Investimentos</h3>
-        <p id="investimentos">R$ 0</p>
-      </div>
-    </div>
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="page-title">Dashboard Financeiro</h1>
+          <p class="page-subtitle">Resumo, gráficos e lançamentos em tempo real</p>
+        </div>
+      </header>
 
-    <div class="chart-card full">
-      <h3>Lançamentos</h3>
-      <ul id="lista"></ul>
-    </div>
+      <!-- KPIs -->
+      <section class="kpi-grid" aria-label="Indicadores">
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Saldo</span>
+            <span class="kpi-badge kpi-badge--blue">Mensal</span>
+          </div>
+          <h2 class="kpi-value" id="saldo">R$ 0</h2>
+          <div class="kpi-spark" aria-hidden="true"></div>
+        </article>
 
-  </main>
-</div>
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Receitas</span>
+            <span class="kpi-badge kpi-badge--green">Entrada</span>
+          </div>
+          <h2 class="kpi-value" id="receitas">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--green" aria-hidden="true"></div>
+        </article>
 
-<!-- MODAL EDITAR -->
-<div id="modal" class="modal">
-  <div class="modal-content">
-    <h3>Editar Lançamento</h3>
-    <input type="text" id="editDescricao"/>
-    <input type="number" id="editValor"/>
-    <button id="saveEdit">Salvar</button>
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Despesas</span>
+            <span class="kpi-badge kpi-badge--red">Saída</span>
+          </div>
+          <h2 class="kpi-value" id="despesas">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--red" aria-hidden="true"></div>
+        </article>
+
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Investimentos</span>
+            <span class="kpi-badge kpi-badge--purple">Carteira</span>
+          </div>
+          <h2 class="kpi-value" id="investimentos">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--purple" aria-hidden="true"></div>
+        </article>
+      </section>
+
+      <!-- CHARTS -->
+      <section class="grid" aria-label="Gráficos">
+        <article class="card chart-card span-7">
+          <div class="card-head">
+            <h3 class="card-title">Análise Mensal</h3>
+            <div class="card-actions">
+              <span class="chip">Receitas</span>
+              <span class="chip chip--muted">Outros</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="barChart"></canvas>
+          </div>
+        </article>
+
+        <article class="card chart-card span-5">
+          <div class="card-head">
+            <h3 class="card-title">Despesas no Mês</h3>
+            <span class="chip chip--muted">Categorias</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <!-- TABLE -->
+      <section class="card table-card" aria-label="Lançamentos">
+        <div class="card-head">
+          <h3 class="card-title">Lançamentos</h3>
+          <span class="chip chip--muted">Editar / Excluir</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th class="th-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   </div>
-</div>
 
-<script type="module" src="./firebase.js"></script>
-<script type="module" src="./app.js"></script>
+  <!-- MODAL EDIT -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Editar lançamento">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h3>Editar Lançamento</h3>
+        <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
+      </div>
 
+      <label class="field">
+        <span class="field-label">Descrição</span>
+        <input type="text" id="editDescricao">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Valor</span>
+        <input type="number" id="editValor" inputmode="decimal">
+      </label>
+
+      <button id="saveEdit" class="btn btn-primary" type="button">Salvar</button>
+    </div>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
+
+  <script>
+    // Fechar modal (visual) sem mexer na lógica do app.js
+    const modal = document.getElementById("modal");
+    const closeModal = document.getElementById("closeModal");
+    if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    });
+  </script>
 </body>
 </html>
