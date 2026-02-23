@@ -12,6 +12,24 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /**
+ * =====================
+ * CONFIG (Alpha Vantage)
+ * =====================
+ * ATENÇÃO: isto expõe sua API key no front-end.
+ * Para produção, o ideal é Cloud Functions/proxy.
+ */
+const ALPHAVANTAGE_KEY = "5Y1WYBEULZVJSV9U";
+const AV_BASE = "https://www.alphavantage.co/query";
+const AV_FUNCTION = "GLOBAL_QUOTE";
+
+/**
+ * Atualização automática diária às 10:00:00 (horário local do browser)
+ */
+const DAILY_QUOTE_HOUR = 10;
+const DAILY_QUOTE_MINUTE = 0;
+const DAILY_QUOTE_SECOND = 0;
+
+/**
  * ==========
  * Helpers
  * ==========
@@ -29,10 +47,51 @@ function clampDate(d) {
   return d instanceof Date && !isNaN(d) ? d : null;
 }
 
+function brl(n) {
+  const x = Number(n || 0);
+  return fmtBRL.format(Number.isFinite(x) ? x : 0);
+}
+
+function pct(n) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x)) return "0%";
+  return `${(x * 100).toFixed(2)}%`;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 const monthNames = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
+
+function normalizeTicker(raw) {
+  return String(raw || "").trim().toUpperCase();
+}
+
+function isBrazilLikeTicker(ticker) {
+  // Heurística simples: PETR4, VALE3, ITUB4 etc => tem número no fim
+  return /[0-9]$/.test(ticker) || ticker.endsWith(".SA");
+}
+
+function toAlphaVantageSymbol(rawTicker) {
+  // Se usuário já informou com sufixo (ex: PETR4.SA), mantém.
+  const t = normalizeTicker(rawTicker);
+  if (!t) return [];
+
+  // Tenta uma lista de símbolos:
+  // - Se é BR: tenta ".SA" e depois cru
+  // - Se é US: tenta cru e depois ".SA" (caso usuário tenha digitado ticker BR sem número)
+  if (isBrazilLikeTicker(t)) {
+    const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
+    const uniq = Array.from(new Set([withSA, t]));
+    return uniq;
+  }
+
+  return Array.from(new Set([t, `${t}.SA`]));
+}
 
 /**
  * ==========
@@ -48,6 +107,17 @@ const investimentosEl = document.getElementById("investimentos");
 const modalEl = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl = document.getElementById("editValor");
+
+// Inputs principais
+const descricaoEl = document.getElementById("descricao");
+const valorEl = document.getElementById("valor");
+
+// Invest inputs
+const investFieldsEl = document.getElementById("investFields");
+const tickerEl = document.getElementById("ticker");
+const qtdAcoesEl = document.getElementById("qtdAcoes");
+const precoAcaoEl = document.getElementById("precoAcao");
+const investTotalEl = document.getElementById("investTotal");
 
 // Dropdown custom (Ano/Mês)
 const yearDD = document.getElementById("yearDD");
@@ -72,15 +142,136 @@ let editId = null;
 
 /**
  * ==========
- * Filter state
+ * State (filtro)
  * ==========
  */
-let selectedYear = new Date().getFullYear(); // default: ano atual
-let selectedMonth = "all"; // "all" | 0..11
+let selectedYear = new Date().getFullYear();
+let selectedMonth = "all";
+
+let currentAddType = "receita";
 
 /**
  * ==========
- * Charts
+ * Alpha Vantage cache
+ * ==========
+ */
+const quoteCache = new Map();
+/**
+ * quoteCache.get(symbol) = { price, updatedAt }
+ */
+const QUOTE_TTL_MS = 24 * 60 * 60 * 1000; // 24h (como você quer atualizar 1x por dia)
+
+/**
+ * Busca uma cotação de um símbolo específico do Alpha Vantage (GLOBAL_QUOTE).
+ */
+async function fetchQuoteForSymbol(symbol) {
+  const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data?.Note) throw new Error("Alpha Vantage rate limit: " + data.Note);
+  if (data?.Information) throw new Error("Alpha Vantage: " + data.Information);
+  if (data?.["Error Message"]) throw new Error("Alpha Vantage: " + data["Error Message"]);
+
+  const quote = data?.["Global Quote"];
+  const price = Number(quote?.["05. price"]);
+
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return price;
+}
+
+/**
+ * Busca cotação tentando múltiplos símbolos (BR/US), com cache.
+ * Retorna { symbolUsed, price } ou null.
+ */
+async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
+  const candidates = toAlphaVantageSymbol(rawTicker);
+  if (!candidates.length) return null;
+
+  const now = Date.now();
+
+  // Se já tem cache válido para algum candidato e não é force, usa.
+  if (!force) {
+    for (const sym of candidates) {
+      const cached = quoteCache.get(sym);
+      if (cached && (now - cached.updatedAt) < QUOTE_TTL_MS) {
+        return { symbolUsed: sym, price: cached.price };
+      }
+    }
+  }
+
+  // Caso contrário tenta buscar
+  for (const sym of candidates) {
+    try {
+      const price = await fetchQuoteForSymbol(sym);
+      if (price != null) {
+        quoteCache.set(sym, { price, updatedAt: now });
+        return { symbolUsed: sym, price };
+      }
+    } catch (e) {
+      console.warn("Cotação falhou para", sym, e?.message || e);
+      // tenta próximo candidato
+    }
+
+    // pequena pausa para respeitar limite
+    await sleep(300);
+  }
+
+  return null;
+}
+
+/**
+ * Atualiza cotações para os investimentos do recorte atual (ano/mês).
+ * "force=true" para atualizar mesmo se tiver cache.
+ */
+async function updateQuotesForInvestments(rows, { force = false } = {}) {
+  const tickers = Array.from(new Set(
+    rows
+      .filter(r => r.tipo === "investimento")
+      .map(r => normalizeTicker(r.ticker))
+      .filter(Boolean)
+  ));
+
+  // Busca um por um (evita estourar limite)
+  for (const t of tickers) {
+    await fetchAlphaVantageQuoteSmart(t, { force });
+    await sleep(350);
+  }
+}
+
+/**
+ * ==========
+ * Invest: total automático (qtd * preço)
+ * ==========
+ */
+function getInvestTotal() {
+  const qtd = Number(qtdAcoesEl?.value || 0);
+  const preco = Number(precoAcaoEl?.value || 0);
+  const total = (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
+  return total;
+}
+
+function updateInvestTotalUI() {
+  if (!investTotalEl) return;
+  const total = getInvestTotal();
+  investTotalEl.textContent = brl(total);
+  if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
+}
+
+function setAddType(tipo) {
+  currentAddType = tipo;
+  const isInvest = tipo === "investimento";
+  if (investFieldsEl) investFieldsEl.hidden = !isInvest;
+  if (isInvest) updateInvestTotalUI();
+}
+
+if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", updateInvestTotalUI);
+if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
+
+/**
+ * ==========
+ * Charts (igual)
  * ==========
  */
 let lineChart = null;
@@ -142,8 +333,6 @@ function renderCharts(filteredRows) {
 
   const blue = "rgba(109,124,255,1)";
   const pink = "rgba(217,70,239,1)";
-  const purple = "rgba(168,85,247,1)";
-  const amber = "rgba(245,158,11,1)";
 
   const lineCtx = document.getElementById("barChart");
   const pieCtx = document.getElementById("pieChart");
@@ -216,23 +405,13 @@ function renderCharts(filteredRows) {
             borderColor: "rgba(255,255,255,.10)",
             borderWidth: 1,
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL.format(ctx.parsed.y || 0)}`
+              label: (ctx) => `${ctx.dataset.label}: ${brl(ctx.parsed.y || 0)}`
             }
           }
         },
         scales: {
           x: { grid: { color: "rgba(255,255,255,.04)" }, ticks: { color: "rgba(229,231,235,.55)" } },
-          y: {
-            grid: { color: "rgba(255,255,255,.06)" },
-            ticks: {
-              color: "rgba(229,231,235,.55)",
-              callback: (v) => {
-                const n = Number(v);
-                if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}k`;
-                return String(n);
-              }
-            }
-          }
+          y: { grid: { color: "rgba(255,255,255,.06)" } }
         }
       },
       plugins: [glowPlugin]
@@ -240,6 +419,7 @@ function renderCharts(filteredRows) {
   }
 
   if (pieCtx) {
+    // Pie continua por valor de compra (você pode trocar para valor atual depois)
     pieChart = new Chart(pieCtx, {
       type: "doughnut",
       data: {
@@ -247,9 +427,9 @@ function renderCharts(filteredRows) {
         datasets: [{
           data: [receitas, despesas, investimentos],
           backgroundColor: [
-            blue.replace("1)", "0.9)"),
-            amber.replace("1)", "0.9)"),
-            purple.replace("1)", "0.9)")
+            "rgba(109,124,255,0.9)",
+            "rgba(245,158,11,0.9)",
+            "rgba(168,85,247,0.9)"
           ],
           borderColor: "rgba(15,23,42,.9)",
           borderWidth: 3,
@@ -261,19 +441,25 @@ function renderCharts(filteredRows) {
         maintainAspectRatio: false,
         cutout: "68%",
         plugins: {
-          legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } },
-          tooltip: {
-            backgroundColor: "rgba(2,6,23,.92)",
-            borderColor: "rgba(255,255,255,.10)",
-            borderWidth: 1,
-            callbacks: {
-              label: (ctx) => `${ctx.label}: ${fmtBRL.format(ctx.parsed || 0)}`
-            }
-          }
+          legend: { position: "right", labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 } }
         }
       }
     });
   }
+}
+
+/**
+ * ==========
+ * Table + KPIs (com cotação atual)
+ * ==========
+ */
+function getCachedPriceForTicker(rawTicker) {
+  const candidates = toAlphaVantageSymbol(rawTicker);
+  for (const sym of candidates) {
+    const cached = quoteCache.get(sym);
+    if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
+  }
+  return null;
 }
 
 function renderTableAndKpis(filteredRows) {
@@ -286,10 +472,44 @@ function renderTableAndKpis(filteredRows) {
     if (r.tipo === "investimento") investimentos += r.valor;
 
     const tr = document.createElement("tr");
+
+    let valorAtual = null;
+    let pl = null;
+    let plPct = null;
+    let quoteLine = `<span class="muted">Cotação: --</span>`;
+
+    if (r.tipo === "investimento" && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
+      const q = getCachedPriceForTicker(r.ticker);
+      if (q?.price) {
+        valorAtual = r.qtdAcoes * q.price;
+        pl = valorAtual - r.valor;
+        plPct = r.valor > 0 ? (pl / r.valor) : 0;
+        quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
+      }
+    }
+
+    const det =
+      r.tipo === "investimento"
+        ? `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)}`
+        : (r.descricao ?? "");
+
+    const valorCell = r.tipo === "investimento"
+      ? `
+        <div class="val-col">
+          <div class="val-main">${brl(r.valor)}</div>
+          <div class="val-sub">${quoteLine}</div>
+          <div class="val-sub">
+            ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
+            ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
+          </div>
+        </div>
+      `
+      : brl(r.valor);
+
     tr.innerHTML = `
-      <td>${r.descricao ?? ""}</td>
+      <td>${det}</td>
       <td><span class="type-pill type-${r.tipo}">${r.tipo}</span></td>
-      <td>${fmtBRL.format(r.valor)}</td>
+      <td>${valorCell}</td>
       <td>
         <button class="action-btn edit" type="button">Editar</button>
         <button class="action-btn delete" type="button">Excluir</button>
@@ -302,17 +522,17 @@ function renderTableAndKpis(filteredRows) {
     tr.querySelector(".edit").onclick = () => {
       modalEl.style.display = "flex";
       editDescricaoEl.value = r.descricao ?? "";
-      editValorEl.value = r.valor ?? 0;
+      editValorEl.value = Number(r.valor || 0);
       editId = r.id;
     };
 
     tabela.appendChild(tr);
   });
 
-  saldoEl.innerText = fmtBRL.format(receitas - despesas);
-  receitasEl.innerText = fmtBRL.format(receitas);
-  despesasEl.innerText = fmtBRL.format(despesas);
-  investimentosEl.innerText = fmtBRL.format(investimentos);
+  saldoEl.innerText = brl(receitas - despesas);
+  receitasEl.innerText = brl(receitas);
+  despesasEl.innerText = brl(despesas);
+  investimentosEl.innerText = brl(investimentos);
 }
 
 function renderAll(allRows) {
@@ -323,7 +543,7 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown custom
+ * Dropdown custom (Ano/Mês)
  * ==========
  */
 function setDDOpen(dd, open) {
@@ -339,7 +559,6 @@ function buildMenu(menuEl, items, activeValue, onPick) {
     const div = document.createElement("div");
     div.className = "dd-item" + (String(item.value) === String(activeValue) ? " is-active" : "");
     div.setAttribute("role", "option");
-    div.dataset.value = String(item.value);
     div.innerHTML = `<span class="mini-dot" aria-hidden="true"></span><span>${item.label}</span>`;
     div.onclick = () => onPick(item.value, item.label);
     menuEl.appendChild(div);
@@ -364,64 +583,92 @@ function wireDropdown(dd, btnEl, setOpen) {
  * ==========
  */
 async function add(tipo) {
-  const descricao = document.getElementById("descricao").value.trim();
-  const valor = Number(document.getElementById("valor").value);
+  const descricao = (descricaoEl?.value || "").trim();
 
+  if (tipo === "investimento") {
+    const ticker = normalizeTicker(tickerEl?.value || "");
+    const qtd = Number(qtdAcoesEl?.value || 0);
+    const preco = Number(precoAcaoEl?.value || 0);
+    const total = qtd * preco;
+
+    if (!descricao) return;
+    if (!Number.isFinite(qtd) || qtd <= 0) return;
+    if (!Number.isFinite(preco) || preco <= 0) return;
+
+    await addDoc(ref, {
+      descricao,
+      tipo,
+      ticker,
+      qtdAcoes: qtd,
+      precoAcao: preco,
+      valor: total,
+      createdAt: serverTimestamp()
+    });
+
+    descricaoEl.value = "";
+    if (tickerEl) tickerEl.value = "";
+    if (qtdAcoesEl) qtdAcoesEl.value = "";
+    if (precoAcaoEl) precoAcaoEl.value = "";
+    if (valorEl) valorEl.value = "";
+    updateInvestTotalUI();
+    return;
+  }
+
+  const valor = Number(valorEl?.value || 0);
   if (!descricao || !Number.isFinite(valor) || valor <= 0) return;
 
   await addDoc(ref, { descricao, valor, tipo, createdAt: serverTimestamp() });
-
-  document.getElementById("descricao").value = "";
-  document.getElementById("valor").value = "";
+  descricaoEl.value = "";
+  valorEl.value = "";
 }
 
-document.getElementById("btnReceita").onclick = () => add("receita");
-document.getElementById("btnDespesa").onclick = () => add("despesa");
-document.getElementById("btnInvest").onclick = () => add("investimento");
-
-document.getElementById("saveEdit").onclick = async () => {
-  if (!editId) return;
-
-  await updateDoc(doc(db, "transactions", editId), {
-    descricao: editDescricaoEl.value.trim(),
-    valor: Number(editValorEl.value)
-  });
-
-  modalEl.style.display = "none";
-};
+document.getElementById("btnReceita").onclick = () => { setAddType("receita"); add("receita"); };
+document.getElementById("btnDespesa").onclick = () => { setAddType("despesa"); add("despesa"); };
+document.getElementById("btnInvest").onclick = () => { setAddType("investimento"); add("investimento"); };
+document.getElementById("btnInvest").addEventListener("click", () => setAddType("investimento"));
 
 /**
  * ==========
- * Type-pill CSS inject
+ * Scheduler: roda diariamente às 10:00:00 AM
  * ==========
  */
-(function injectTypePillCSS() {
-  const css = `
-    .type-pill{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(17,24,39,.35);
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.2px;
-      text-transform: capitalize;
+function msUntilNextTenAM() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(DAILY_QUOTE_HOUR, DAILY_QUOTE_MINUTE, DAILY_QUOTE_SECOND, 0);
+
+  // se já passou das 10:00 hoje, agenda para amanhã
+  if (next <= now) next.setDate(next.getDate() + 1);
+
+  return next.getTime() - now.getTime();
+}
+
+function scheduleDailyQuoteUpdate() {
+  const delay = msUntilNextTenAM();
+
+  setTimeout(async () => {
+    try {
+      if (window.__ALL_ROWS__) {
+        const filtered = computeFilteredRows(window.__ALL_ROWS__);
+        // force=true para atualizar mesmo com cache
+        await updateQuotesForInvestments(filtered, { force: true });
+        renderAll(window.__ALL_ROWS__);
+      }
+    } finally {
+      // agenda de novo para o próximo dia
+      scheduleDailyQuoteUpdate();
     }
-    .type-receita{ border-color: rgba(34,197,94,.25); color: rgba(165,245,197,.95); }
-    .type-despesa{ border-color: rgba(239,68,68,.25); color: rgba(255,190,190,.95); }
-    .type-investimento{ border-color: rgba(168,85,247,.25); color: rgba(229,199,255,.95); }
-  `;
-  const style = document.createElement("style");
-  style.textContent = css;
-  document.head.appendChild(style);
-})();
+  }, delay);
+}
 
 /**
  * ==========
  * Boot
  * ==========
  */
+setAddType("receita");
+updateInvestTotalUI();
+
 yearValue.textContent = String(selectedYear);
 monthValue.textContent = "Todos";
 
@@ -436,18 +683,26 @@ wireDropdown(monthDD, monthBtn, (open) => {
 });
 
 if (clearFiltersBtn) {
-  clearFiltersBtn.onclick = () => {
+  clearFiltersBtn.onclick = async () => {
     selectedYear = new Date().getFullYear();
     selectedMonth = "all";
     yearValue.textContent = String(selectedYear);
     monthValue.textContent = "Todos";
     setDDOpen(yearDD, false);
     setDDOpen(monthDD, false);
-    if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
+
+    if (window.__ALL_ROWS__) {
+      const filtered = computeFilteredRows(window.__ALL_ROWS__);
+      await updateQuotesForInvestments(filtered, { force: false });
+      renderAll(window.__ALL_ROWS__);
+    }
   };
 }
 
-onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
+// agenda atualização diária 10:00 (local)
+scheduleDailyQuoteUpdate();
+
+onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   const allRows = [];
   snapshot.forEach(docItem => {
     const data = docItem.data();
@@ -456,12 +711,16 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
       descricao: data.descricao,
       tipo: data.tipo,
       valor: Number(data.valor || 0),
+      ticker: data.ticker,
+      qtdAcoes: Number(data.qtdAcoes || 0),
+      precoAcao: Number(data.precoAcao || 0),
       createdAt: toDateMaybe(data.createdAt)
     });
   });
 
   window.__ALL_ROWS__ = allRows;
 
+  // Menus Ano/Mês
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
@@ -469,18 +728,19 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
     if (d) years.add(d.getFullYear());
   });
   const sortedYears = Array.from(years).sort((a, b) => b - a);
-
-  // garante selectedYear existente; senão usa ano atual
   if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
 
   buildMenu(
     yearMenu,
     sortedYears.map(y => ({ value: y, label: String(y) })),
     selectedYear,
-    (value, label) => {
+    async (value, label) => {
       selectedYear = Number(value);
       yearValue.textContent = label;
       setDDOpen(yearDD, false);
+
+      const filtered = computeFilteredRows(window.__ALL_ROWS__);
+      await updateQuotesForInvestments(filtered, { force: false });
       renderAll(window.__ALL_ROWS__);
     }
   );
@@ -489,15 +749,21 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), snapshot => {
     monthMenu,
     [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
     selectedMonth,
-    (value, label) => {
+    async (value, label) => {
       selectedMonth = value === "all" ? "all" : Number(value);
       monthValue.textContent = label;
       setDDOpen(monthDD, false);
+
+      const filtered = computeFilteredRows(window.__ALL_ROWS__);
+      await updateQuotesForInvestments(filtered, { force: false });
       renderAll(window.__ALL_ROWS__);
     }
   );
 
-  // Atualiza label inicial após rebuild do menu
   yearValue.textContent = String(selectedYear);
+
+  // Atualiza cache (sem force) e renderiza
+  const filtered = computeFilteredRows(allRows);
+  await updateQuotesForInvestments(filtered, { force: false });
   renderAll(allRows);
 });
