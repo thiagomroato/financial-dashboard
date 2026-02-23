@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=41"/>
+  <link rel="stylesheet" href="style.css?v=42"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -79,13 +79,13 @@
           </button>
         </div>
 
-        <!-- Botão único para salvar -->
-        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px;">
-          Adicionar
+        <!-- Botão único para salvar (fica escondido até selecionar tipo) -->
+        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px; display:none;">
+          ADICIONAR LANÇAMENTO
         </button>
 
         <p class="sidebar-hint">
-          Selecione o tipo e depois clique em <b>Adicionar</b>.
+          Selecione o tipo e depois clique em <b>ADICIONAR LANÇAMENTO</b>.
         </p>
       </div>
 
@@ -253,7 +253,6 @@
   <script type="module" src="app.js"></script>
 
   <script>
-    // Fechar modal (visual)
     const modal = document.getElementById("modal");
     const closeModal = document.getElementById("closeModal");
     if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
