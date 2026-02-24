@@ -13,3 +13,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+{
+  "functions": [
+    {
+      "source": "functions"
+    }
+  ]
+}
