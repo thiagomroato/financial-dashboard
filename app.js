@@ -1,550 +1,948 @@
-// Carregador de dados do Firebase
-async function carregarDadosDoFirebase() {
+import { db } from "./firebase.js";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/**
+ * =====================
+ * CONFIG (Alpha Vantage)
+ * =====================
+ */
+const ALPHAVANTAGE_KEY = "JOE36PHP5PDKT55S";
+const AV_BASE = "https://www.alphavantage.co/query";
+const AV_FUNCTION = "GLOBAL_QUOTE";
+
+// Atualização diária 10:00:00 (local do browser)
+const DAILY_QUOTE_HOUR = 10;
+const DAILY_QUOTE_MINUTE = 0;
+const DAILY_QUOTE_SECOND = 0;
+
+// throttle simples p/ não spammar AV
+const AV_DELAY_MS = 2000;
+
+/**
+ * ==========
+ * Helpers
+ * ==========
+ */
+const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function toDateMaybe(ts) {
+  if (!ts) return null;
+  if (ts instanceof Date) return ts;
+  if (typeof ts.toDate === "function") return ts.toDate();
+  return null;
+}
+
+function clampDate(d) {
+  return d instanceof Date && !isNaN(d) ? d : null;
+}
+
+function brl(n) {
+  const x = Number(n || 0);
+  return fmtBRL.format(Number.isFinite(x) ? x : 0);
+}
+
+function pct(n) {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x)) return "0%";
+  return `${(x * 100).toFixed(2)}%`;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function normalizeTicker(raw) {
+  return String(raw || "").trim().toUpperCase();
+}
+
+function isBrazilLikeTicker(ticker) {
+  return /[0-9]$/.test(ticker) || ticker.endsWith(".SA");
+}
+
+function toAlphaVantageSymbolCandidates(rawTicker) {
+  const t = normalizeTicker(rawTicker);
+  if (!t) return [];
+
+  if (isBrazilLikeTicker(t)) {
+    const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
+    return Array.from(new Set([withSA, t]));
+  }
+
+  return Array.from(new Set([t, `${t}.SA`]));
+}
+
+const monthNames = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+];
+
+/**
+ * ==========
+ * DOM refs
+ * ==========
+ */
+const tabela = document.getElementById("tabela");
+const saldoEl = document.getElementById("saldo");
+const receitasEl = document.getElementById("receitas");
+const despesasEl = document.getElementById("despesas");
+const investimentosEl = document.getElementById("investimentos");
+
+const modalEl = document.getElementById("modal");
+const editDescricaoEl = document.getElementById("editDescricao");
+const editValorEl = document.getElementById("editValor");
+
+const addFormEl = document.getElementById("addForm");
+
+// Inputs
+const descricaoEl = document.getElementById("descricao");
+const valorEl = document.getElementById("valor");
+
+// Invest fields containers
+const investFieldsEl = document.getElementById("investFields");
+const stockFieldsEl = document.getElementById("stockFields");
+const cdbFieldsEl = document.getElementById("cdbFields");
+const investTotalEl = document.getElementById("investTotal");
+
+// Stock inputs
+const tickerEl = document.getElementById("ticker");
+const qtdAcoesEl = document.getElementById("qtdAcoes");
+const precoAcaoEl = document.getElementById("precoAcao");
+
+// CDB input
+const cdbPctCdiEl = document.getElementById("cdbPctCdi");
+
+// InvestKind DD
+const investKindDD = document.getElementById("investKindDD");
+const investKindBtn = document.getElementById("investKindBtn");
+const investKindMenu = document.getElementById("investKindMenu");
+const investKindValue = document.getElementById("investKindValue");
+
+// StockMarket DD
+const stockMarketDD = document.getElementById("stockMarketDD");
+const stockMarketBtn = document.getElementById("stockMarketBtn");
+const stockMarketMenu = document.getElementById("stockMarketMenu");
+const stockMarketValue = document.getElementById("stockMarketValue");
+
+// Botões
+const btnReceita = document.getElementById("btnReceita");
+const btnDespesa = document.getElementById("btnDespesa");
+const btnInvest = document.getElementById("btnInvest");
+const btnAdd = document.getElementById("btnAdd");
+
+// Dropdown (Ano/Mês)
+const yearDD = document.getElementById("yearDD");
+const yearMenu = document.getElementById("yearMenu");
+const yearValue = document.getElementById("yearValue");
+const yearBtn = document.getElementById("yearBtn");
+
+const monthDD = document.getElementById("monthDD");
+const monthMenu = document.getElementById("monthMenu");
+const monthValue = document.getElementById("monthValue");
+const monthBtn = document.getElementById("monthBtn");
+
+const clearFiltersBtn = document.getElementById("clearFilters");
+
+/**
+ * ==========
+ * Firestore
+ * ==========
+ */
+const ref = collection(db, "transactions");
+let editId = null;
+
+/**
+ * ==========
+ * State
+ * ==========
+ */
+let selectedYear = new Date().getFullYear();
+let selectedMonth = "all";
+let currentAddType = null;
+
+// Invest state
+let investKind = "stock"; // "stock" | "cdb"
+let stockMarket = "BR";   // "BR" | "US"
+
+/**
+ * ==========
+ * UI helpers
+ * ==========
+ */
+function setActiveTypeButton(activeBtn) {
+  [btnReceita, btnDespesa, btnInvest].forEach(b => {
+    if (!b) return;
+    b.classList.toggle("is-selected", b === activeBtn);
+  });
+}
+
+function showAddForm(show) {
+  if (!addFormEl) return;
+  addFormEl.style.display = show ? "block" : "none";
+}
+
+/**
+ * Total automático (AÇÕES)
+ */
+function getInvestTotalStock() {
+  const qtd = Number(qtdAcoesEl?.value || 0);
+  const preco = Number(precoAcaoEl?.value || 0);
+  return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
+}
+
+function updateInvestTotalUIStock() {
+  const total = getInvestTotalStock();
+  if (investTotalEl) investTotalEl.textContent = brl(total);
+  if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
+}
+
+function updateInvestTotalUICdb() {
+  const total = Number(valorEl?.value || 0);
+  if (investTotalEl) investTotalEl.textContent = brl(total);
+}
+
+function applyInvestKindUI() {
+  const isStock = investKind === "stock";
+  if (stockFieldsEl) stockFieldsEl.hidden = !isStock;
+  if (cdbFieldsEl) cdbFieldsEl.hidden = isStock;
+
+  if (isStock) updateInvestTotalUIStock();
+  else updateInvestTotalUICdb();
+}
+
+/**
+ * ==========
+ * Dropdown custom (Ano/Mês + Invest)
+ * ==========
+ */
+function setDDOpen(dd, open) {
+  if (!dd) return;
+  dd.classList.toggle("is-open", open);
+  const btn = dd.querySelector(".dd-btn");
+  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function buildMenu(menuEl, items, activeValue, onPick) {
+  if (!menuEl) return;
+  menuEl.innerHTML = "";
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "dd-item" + (String(item.value) === String(activeValue) ? " is-active" : "");
+    div.setAttribute("role", "option");
+    div.innerHTML = `<span class="mini-dot" aria-hidden="true"></span><span>${item.label}</span>`;
+    div.onclick = () => onPick(item.value, item.label);
+    menuEl.appendChild(div);
+  });
+}
+
+function wireDropdown(dd, btnEl, setOpen) {
+  if (!dd || !btnEl) return;
+
+  btnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setOpen(!dd.classList.contains("is-open"));
+  });
+
+  document.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+}
+
+let investDDSetupDone = false;
+function setupInvestDropdownsOnce() {
+  if (investDDSetupDone) return;
+  investDDSetupDone = true;
+
+  // Open/close
+  wireDropdown(investKindDD, investKindBtn, (open) => {
+    setDDOpen(investKindDD, open);
+    setDDOpen(stockMarketDD, false);
+  });
+
+  wireDropdown(stockMarketDD, stockMarketBtn, (open) => {
+    setDDOpen(stockMarketDD, open);
+    setDDOpen(investKindDD, false);
+  });
+
+  // Menus
+  buildMenu(
+    investKindMenu,
+    [
+      { value: "stock", label: "Ação" },
+      { value: "cdb", label: "CDB" }
+    ],
+    investKind,
+    (value, label) => {
+      investKind = String(value);
+      if (investKindValue) investKindValue.textContent = label;
+      setDDOpen(investKindDD, false);
+      applyInvestKindUI();
+    }
+  );
+
+  buildMenu(
+    stockMarketMenu,
+    [
+      { value: "BR", label: "Brasil (BRL)" },
+      { value: "US", label: "EUA (USD)" }
+    ],
+    stockMarket,
+    (value, label) => {
+      stockMarket = String(value);
+      if (stockMarketValue) stockMarketValue.textContent = label;
+      setDDOpen(stockMarketDD, false);
+    }
+  );
+
+  // Valores iniciais
+  if (investKindValue) investKindValue.textContent = investKind === "stock" ? "Ação" : "CDB";
+  if (stockMarketValue) stockMarketValue.textContent = stockMarket === "BR" ? "Brasil (BRL)" : "EUA (USD)";
+}
+
+/**
+ * Toggle tipo:
+ * - Clicar abre
+ * - Clicar no mesmo fecha
+ */
+function toggleAddType(tipo, activeBtn) {
+  const isOpen = addFormEl ? addFormEl.style.display !== "none" : false;
+  const isSameType = currentAddType === tipo;
+
+  if (isOpen && isSameType) {
+    currentAddType = null;
+    setActiveTypeButton(null);
+    showAddForm(false);
+    if (investFieldsEl) investFieldsEl.hidden = true;
+    return;
+  }
+
+  currentAddType = tipo;
+  setActiveTypeButton(activeBtn);
+  showAddForm(true);
+
+  const isInvest = tipo === "investimento";
+  if (investFieldsEl) investFieldsEl.hidden = !isInvest;
+
+  if (isInvest) {
+    setupInvestDropdownsOnce();
+    applyInvestKindUI();
+  }
+}
+
+// total UI events
+if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
+if (precoAcaoEl) precoAcaoEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
+if (valorEl) valorEl.addEventListener("input", () => investKind === "cdb" && updateInvestTotalUICdb());
+
+/**
+ * ==========
+ * Alpha Vantage cache
+ * ==========
+ */
+const quoteCache = new Map(); // symbol => { price, updatedAt }
+const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+async function fetchQuoteForSymbol(symbol) {
+  const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data?.Note) throw new Error("Alpha Vantage rate limit: " + data.Note);
+  if (data?.Information) throw new Error("Alpha Vantage: " + data.Information);
+  if (data?.["Error Message"]) throw new Error("Alpha Vantage: " + data["Error Message"]);
+
+  const quote = data?.["Global Quote"];
+  const price = Number(quote?.["05. price"]);
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  return price;
+}
+
+async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
+  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
+  if (!candidates.length) return null;
+
+  const now = Date.now();
+
+  if (!force) {
+    for (const sym of candidates) {
+      const cached = quoteCache.get(sym);
+      if (cached && (now - cached.updatedAt) < QUOTE_TTL_MS) {
+        return { symbolUsed: sym, price: cached.price };
+      }
+    }
+  }
+
+  for (const sym of candidates) {
     try {
-        // Carregar configurações
-        const configDoc = await db.collection('configuracoes').doc('geral').get();
-        if (configDoc.exists) {
-            const data = configDoc.data();
-            configuracoes.usdRate = data.usdRate || 5.00;
-            configuracoes.monthlyRate = data.monthlyRate || 1.00;
-            configuracoes.targetGoal = data.targetGoal || 112000;
-        }
-
-        // Atualizar inputs
-        document.getElementById('usdRate').value = configuracoes.usdRate;
-        document.getElementById('monthlyRate').value = configuracoes.monthlyRate;
-        document.getElementById('targetGoal').value = configuracoes.targetGoal;
-
-        // Carregar transações em tempo real
-        db.collection('transacoes')
-            .orderBy('data', 'desc')
-            .onSnapshot((snapshot) => {
-                transacoes = [];
-                snapshot.forEach((doc) => {
-                    transacoes.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                atualizar();
-            });
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+      const price = await fetchQuoteForSymbol(sym);
+      if (price != null) {
+        quoteCache.set(sym, { price, updatedAt: now });
+        return { symbolUsed: sym, price };
+      }
+    } catch (e) {
+      console.warn("Cotação falhou:", sym, e?.message || e);
     }
+    await sleep(AV_DELAY_MS);
+  }
+
+  return null;
 }
 
-// Adicionar Receita
-async function adicionarReceita() {
-    const data = document.getElementById('receitaData').value;
-    const categoria = document.getElementById('receitaCategoria').value;
-    const descricao = document.getElementById('receitaDescricao').value;
-    const valor = parseFloat(document.getElementById('receitaValor').value);
+async function updateQuotesForInvestments(rows, { force = false } = {}) {
+  const tickers = Array.from(new Set(
+    rows
+      .filter(r => r.tipo === "investimento" && r.investKind !== "cdb")
+      .map(r => normalizeTicker(r.ticker))
+      .filter(Boolean)
+  ));
 
-    if (!data || !descricao || !valor) {
-        alert('Preencha todos os campos!');
-        return;
+  for (const t of tickers) {
+    await fetchAlphaVantageQuoteSmart(t, { force });
+    await sleep(AV_DELAY_MS);
+  }
+}
+
+function getCachedQuoteForTicker(rawTicker) {
+  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
+  for (const sym of candidates) {
+    const cached = quoteCache.get(sym);
+    if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
+  }
+  return null;
+}
+
+function getCurrentValueForInvestmentRow(row) {
+  if (row.tipo !== "investimento") return null;
+  if (row.investKind === "cdb") return null;
+
+  const qtd = Number(row.qtdAcoes || 0);
+  if (!Number.isFinite(qtd) || qtd <= 0) return null;
+
+  const t = normalizeTicker(row.ticker);
+  if (!t) return null;
+
+  const q = getCachedQuoteForTicker(t);
+  if (!q?.price) return null;
+
+  return qtd * q.price;
+}
+
+/**
+ * ==========
+ * Charts
+ * ==========
+ */
+let lineChart = null;
+let pieChart = null;
+
+function destroyCharts() {
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+  if (pieChart) { pieChart.destroy(); pieChart = null; }
+}
+
+function chartDefaults() {
+  if (typeof Chart === "undefined") return;
+  Chart.defaults.color = "rgba(229,231,235,.62)";
+  Chart.defaults.font.family =
+    'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+}
+
+function makeGlowDataset(baseColor, data, label) {
+  return {
+    label,
+    data,
+    borderColor: baseColor,
+    backgroundColor: baseColor.replace("1)", "0.22)"),
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 4,
+    pointBackgroundColor: baseColor,
+    tension: 0.35,
+    fill: true
+  };
+}
+
+const glowPlugin = {
+  id: "glowPlugin",
+  beforeDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.shadowColor = "rgba(109,124,255,.25)";
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 6;
+  },
+  afterDatasetsDraw(chart) {
+    chart.ctx.restore();
+  }
+};
+
+function computeFilteredRows(allRows) {
+  return allRows.filter(r => {
+    const d = clampDate(r.createdAt);
+    if (!d) return false;
+    if (d.getFullYear() !== selectedYear) return false;
+    if (selectedMonth !== "all" && d.getMonth() !== selectedMonth) return false;
+    return true;
+  });
+}
+
+function sumInvestmentsValue(rows) {
+  let total = 0;
+
+  rows.forEach(r => {
+    if (r.tipo !== "investimento") return;
+
+    if (r.investKind === "cdb") {
+      total += Number(r.valor || 0);
+      return;
     }
 
+    const atual = getCurrentValueForInvestmentRow(r);
+    total += (atual != null ? atual : Number(r.valor || 0));
+  });
+
+  return total;
+}
+
+function renderCharts(filteredRows) {
+  if (typeof Chart === "undefined") return;
+  chartDefaults();
+
+  const lineCtx = document.getElementById("barChart");
+  const pieCtx = document.getElementById("pieChart");
+  if (!lineCtx || !pieCtx) return;
+
+  const blue = "rgba(109,124,255,1)";
+  const pink = "rgba(217,70,239,1)";
+
+  let labels = [];
+  let receitaSeries = [];
+  let despesaSeries = [];
+
+  const hasFixedMonth = selectedMonth !== "all";
+
+  if (hasFixedMonth) {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+
+    const byDay = Array.from({ length: daysInMonth }, () => ({ receita: 0, despesa: 0 }));
+
+    filteredRows.forEach(r => {
+      const d = clampDate(r.createdAt);
+      if (!d) return;
+      const day = d.getDate() - 1;
+      if (r.tipo === "receita") byDay[day].receita += r.valor;
+      if (r.tipo === "despesa") byDay[day].despesa += r.valor;
+    });
+
+    receitaSeries = byDay.map(x => x.receita);
+    despesaSeries = byDay.map(x => x.despesa);
+  } else {
+    labels = monthNames.map(m => m.slice(0, 3).toLowerCase());
+
+    const byMonthReceita = Array.from({ length: 12 }, () => 0);
+    const byMonthDespesa = Array.from({ length: 12 }, () => 0);
+
+    filteredRows.forEach(r => {
+      const d = clampDate(r.createdAt);
+      if (!d) return;
+      const m = d.getMonth();
+      if (r.tipo === "receita") byMonthReceita[m] += r.valor;
+      if (r.tipo === "despesa") byMonthDespesa[m] += r.valor;
+    });
+
+    receitaSeries = byMonthReceita;
+    despesaSeries = byMonthDespesa;
+  }
+
+  let receitas = 0, despesas = 0;
+  filteredRows.forEach(r => {
+    if (r.tipo === "receita") receitas += r.valor;
+    if (r.tipo === "despesa") despesas += r.valor;
+  });
+
+  const investimentosTotal = sumInvestmentsValue(filteredRows);
+
+  destroyCharts();
+
+  lineChart = new Chart(lineCtx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        makeGlowDataset(blue, receitaSeries, "Receita"),
+        makeGlowDataset(pink, despesaSeries, "Despesa")
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false },
+    plugins: [glowPlugin]
+  });
+
+  pieChart = new Chart(pieCtx, {
+    type: "doughnut",
+    data: {
+      labels: ["Receita", "Despesa", "Investimentos"],
+      datasets: [{
+        data: [receitas, despesas, investimentosTotal],
+        backgroundColor: [
+          "rgba(109,124,255,0.9)",
+          "rgba(245,158,11,0.9)",
+          "rgba(168,85,247,0.9)"
+        ],
+        borderColor: "rgba(15,23,42,.9)",
+        borderWidth: 3
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "68%" }
+  });
+}
+
+/**
+ * ==========
+ * Table + KPIs
+ * ==========
+ */
+function renderTableAndKpis(filteredRows) {
+  if (!tabela) return;
+
+  let receitas = 0, despesas = 0;
+  const investimentosTotal = sumInvestmentsValue(filteredRows);
+
+  tabela.innerHTML = "";
+
+  filteredRows.forEach(r => {
+    if (r.tipo === "receita") receitas += r.valor;
+    if (r.tipo === "despesa") despesas += r.valor;
+
+    const tr = document.createElement("tr");
+
+    let valorAtual = null;
+    let pl = null;
+    let plPct = null;
+    let quoteLine = `<span class="muted">Cotação: --</span>`;
+
+    const isStockInvestment = r.tipo === "investimento" && r.investKind !== "cdb";
+
+    if (isStockInvestment && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
+      const q = getCachedQuoteForTicker(r.ticker);
+      if (q?.price) {
+        valorAtual = r.qtdAcoes * q.price;
+        pl = valorAtual - Number(r.valor || 0);
+        plPct = r.valor > 0 ? (pl / r.valor) : 0;
+        quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
+      }
+    }
+
+    const desc =
+      r.tipo === "investimento"
+        ? (r.investKind === "cdb"
+            ? `${r.descricao ?? ""} — CDB ${Number(r.cdbPctCdi || 0)}% do CDI`
+            : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)} ${r.market === "US" ? "(USD)" : "(BRL)"}`
+          )
+        : (r.descricao ?? "");
+
+    const valorCell = r.tipo === "investimento"
+      ? (r.investKind === "cdb"
+          ? `<div class="val-col">
+              <div class="val-main">${brl(r.valor)}</div>
+              <div class="val-sub"><span class="muted">CDB</span><span class="muted">${Number(r.cdbPctCdi || 0)}% CDI</span></div>
+            </div>`
+          : `
+            <div class="val-col">
+              <div class="val-main">Investido: ${brl(r.valor)}</div>
+              <div class="val-sub">${quoteLine}</div>
+              <div class="val-sub">
+                ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
+                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
+              </div>
+            </div>
+          `)
+      : brl(r.valor);
+
+    tr.innerHTML = `
+      <td>${desc}</td>
+      <td><span class="type-pill type-${r.tipo}">${r.tipo}</span></td>
+      <td>${valorCell}</td>
+      <td>
+        <button class="action-btn edit" type="button">Editar</button>
+        <button class="action-btn delete" type="button">Excluir</button>
+      </td>
+    `;
+
+    const delBtn = tr.querySelector(".delete");
+    if (delBtn) delBtn.onclick = () => deleteDoc(doc(db, "transactions", r.id));
+
+    const editBtn = tr.querySelector(".edit");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        if (!modalEl) return;
+        modalEl.style.display = "flex";
+        if (editDescricaoEl) editDescricaoEl.value = r.descricao ?? "";
+        if (editValorEl) editValorEl.value = Number(r.valor || 0);
+        editId = r.id;
+      };
+    }
+
+    tabela.appendChild(tr);
+  });
+
+  if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
+  if (receitasEl) receitasEl.innerText = brl(receitas);
+  if (despesasEl) despesasEl.innerText = brl(despesas);
+  if (investimentosEl) investimentosEl.innerText = brl(investimentosTotal);
+}
+
+function renderAll(allRows) {
+  const filteredRows = computeFilteredRows(allRows);
+  renderTableAndKpis(filteredRows);
+  renderCharts(filteredRows);
+}
+
+/**
+ * ==========
+ * Add
+ * ==========
+ */
+async function addCurrent() {
+  const descricao = (descricaoEl?.value || "").trim();
+  if (!descricao || !currentAddType) return;
+
+  if (currentAddType === "investimento") {
+    if (investKind === "stock") {
+      const market = stockMarket;
+      const ticker = normalizeTicker(tickerEl?.value || "");
+      const qtd = Number(qtdAcoesEl?.value || 0);
+      const preco = Number(precoAcaoEl?.value || 0);
+      const total = qtd * preco;
+
+      if (!Number.isFinite(qtd) || qtd <= 0) return;
+      if (!Number.isFinite(preco) || preco <= 0) return;
+
+      await addDoc(ref, {
+        descricao,
+        tipo: "investimento",
+        investKind: "stock",
+        market,
+        ticker,
+        qtdAcoes: qtd,
+        precoAcao: preco,
+        valor: total,
+        createdAt: serverTimestamp()
+      });
+
+      if (descricaoEl) descricaoEl.value = "";
+      if (tickerEl) tickerEl.value = "";
+      if (qtdAcoesEl) qtdAcoesEl.value = "";
+      if (precoAcaoEl) precoAcaoEl.value = "";
+      if (valorEl) valorEl.value = "";
+      updateInvestTotalUIStock();
+      return;
+    }
+
+    // CDB
+    const valor = Number(valorEl?.value || 0);
+    const pctCdi = Number(cdbPctCdiEl?.value || 0);
+
+    if (!Number.isFinite(valor) || valor <= 0) return;
+    if (!Number.isFinite(pctCdi) || pctCdi <= 0) return;
+
+    await addDoc(ref, {
+      descricao,
+      tipo: "investimento",
+      investKind: "cdb",
+      valor,
+      cdbPctCdi: pctCdi,
+      createdAt: serverTimestamp()
+    });
+
+    if (descricaoEl) descricaoEl.value = "";
+    if (valorEl) valorEl.value = "";
+    if (cdbPctCdiEl) cdbPctCdiEl.value = "";
+    updateInvestTotalUICdb();
+    return;
+  }
+
+  const valor = Number(valorEl?.value || 0);
+  if (!Number.isFinite(valor) || valor <= 0) return;
+
+  await addDoc(ref, { descricao, valor, tipo: currentAddType, createdAt: serverTimestamp() });
+
+  if (descricaoEl) descricaoEl.value = "";
+  if (valorEl) valorEl.value = "";
+}
+
+/**
+ * ==========
+ * Scheduler 10:00:00
+ * ==========
+ */
+function msUntilNextTenAM() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(DAILY_QUOTE_HOUR, DAILY_QUOTE_MINUTE, DAILY_QUOTE_SECOND, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
+function scheduleDailyQuoteUpdate() {
+  const delay = msUntilNextTenAM();
+  setTimeout(async () => {
     try {
-        await db.collection('transacoes').add({
-            data: data,
-            tipo: 'receita',
-            categoria: categoria,
-            descricao: descricao,
-            valor: valor,
-            moeda: 'BRL',
-            usuarioId: usuarioAtual.uid,
-            usuarioEmail: usuarioAtual.email,
-            dataCriacao: new Date(),
-            dataAtualizacao: new Date()
-        });
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('receitaModal'));
-        modal.hide();
-
-        document.getElementById('receitaData').value = '';
-        document.getElementById('receitaDescricao').value = '';
-        document.getElementById('receitaValor').value = '';
-    } catch (error) {
-        alert('Erro ao adicionar receita: ' + error.message);
+      if (window.__ALL_ROWS__) {
+        const filtered = computeFilteredRows(window.__ALL_ROWS__);
+        await updateQuotesForInvestments(filtered, { force: true });
+        renderAll(window.__ALL_ROWS__);
+      }
+    } finally {
+      scheduleDailyQuoteUpdate();
     }
+  }, delay);
 }
 
-// Adicionar Despesa
-async function adicionarDespesa() {
-    const data = document.getElementById('despesaData').value;
-    const categoria = document.getElementById('despesaCategoria').value;
-    const descricao = document.getElementById('despesaDescricao').value;
-    const valor = parseFloat(document.getElementById('despesaValor').value);
-
-    if (!data || !descricao || !valor) {
-        alert('Preencha todos os campos!');
-        return;
-    }
-
-    try {
-        await db.collection('transacoes').add({
-            data: data,
-            tipo: 'despesa',
-            categoria: categoria,
-            descricao: descricao,
-            valor: valor,
-            moeda: 'BRL',
-            usuarioId: usuarioAtual.uid,
-            usuarioEmail: usuarioAtual.email,
-            dataCriacao: new Date(),
-            dataAtualizacao: new Date()
-        });
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('despesaModal'));
-        modal.hide();
-
-        document.getElementById('despesaData').value = '';
-        document.getElementById('despesaDescricao').value = '';
-        document.getElementById('despesaValor').value = '';
-    } catch (error) {
-        alert('Erro ao adicionar despesa: ' + error.message);
-    }
+/**
+ * ==========
+ * Force quote refresh after snapshot
+ * ==========
+ */
+let quoteRefreshInFlight = false;
+async function ensureQuotesThenRerender(allRows) {
+  if (quoteRefreshInFlight) return;
+  quoteRefreshInFlight = true;
+  try {
+    const filtered = computeFilteredRows(allRows);
+    await updateQuotesForInvestments(filtered, { force: true });
+    renderAll(allRows);
+  } finally {
+    quoteRefreshInFlight = false;
+  }
 }
 
-// Adicionar Investimento
-async function adicionarInvestimento() {
-    const data = document.getElementById('investimentoData').value;
-    const tipo = document.getElementById('investimentoTipo').value;
-    const moeda = document.getElementById('investimentoMoeda').value;
-    const valor = parseFloat(document.getElementById('investimentoValor').value);
+/**
+ * ==========
+ * Wire UI
+ * ==========
+ */
+if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receita", btnReceita));
+if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despesa", btnDespesa));
+if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
+if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
 
-    if (!data || !valor) {
-        alert('Preencha todos os campos!');
-        return;
+/**
+ * ==========
+ * Boot
+ * ==========
+ */
+showAddForm(false);
+if (investFieldsEl) investFieldsEl.hidden = true;
+
+if (yearValue) yearValue.textContent = String(selectedYear);
+if (monthValue) monthValue.textContent = "Todos";
+
+// Ano/Mês dropdown
+wireDropdown(yearDD, yearBtn, (open) => {
+  setDDOpen(yearDD, open);
+  setDDOpen(monthDD, false);
+});
+
+wireDropdown(monthDD, monthBtn, (open) => {
+  setDDOpen(monthDD, open);
+  setDDOpen(yearDD, false);
+});
+
+if (clearFiltersBtn) {
+  clearFiltersBtn.addEventListener("click", async () => {
+    selectedYear = new Date().getFullYear();
+    selectedMonth = "all";
+    if (yearValue) yearValue.textContent = String(selectedYear);
+    if (monthValue) monthValue.textContent = "Todos";
+    setDDOpen(yearDD, false);
+    setDDOpen(monthDD, false);
+
+    if (window.__ALL_ROWS__) {
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
     }
-
-    try {
-        await db.collection('transacoes').add({
-            data: data,
-            tipo: 'investimento',
-            categoria: tipo,
-            descricao: tipo,
-            valor: valor,
-            moeda: moeda,
-            usuarioId: usuarioAtual.uid,
-            usuarioEmail: usuarioAtual.email,
-            dataCriacao: new Date(),
-            dataAtualizacao: new Date()
-        });
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('investimentoModal'));
-        modal.hide();
-
-        document.getElementById('investimentoData').value = '';
-        document.getElementById('investimentoValor').value = '';
-    } catch (error) {
-        alert('Erro ao adicionar investimento: ' + error.message);
-    }
+  });
 }
 
-// Deletar transação
-async function deletarTransacao(id) {
-    if (confirm('Tem certeza que deseja deletar esta transação?')) {
-        try {
-            await db.collection('transacoes').doc(id).delete();
-        } catch (error) {
-            alert('Erro ao deletar: ' + error.message);
-        }
-    }
-}
+scheduleDailyQuoteUpdate();
 
-// Calcular Patrimônio
-function calcularPatrimonio() {
-    let patrimonio = 0;
-
-    transacoes.forEach(t => {
-        let valor = t.valor;
-
-        if (t.moeda === 'USD') {
-            valor = valor * configuracoes.usdRate;
-        }
-
-        if (t.tipo === 'receita' || t.tipo === 'investimento') {
-            patrimonio += valor;
-        } else if (t.tipo === 'despesa') {
-            patrimonio -= valor;
-        }
+/**
+ * ==========
+ * Firestore subscription
+ * ==========
+ */
+onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
+  const allRows = [];
+  snapshot.forEach(docItem => {
+    const data = docItem.data();
+    allRows.push({
+      id: docItem.id,
+      descricao: data.descricao,
+      tipo: data.tipo,
+      valor: Number(data.valor || 0),
+      investKind: data.investKind,
+      market: data.market,
+      cdbPctCdi: Number(data.cdbPctCdi || 0),
+      ticker: data.ticker,
+      qtdAcoes: Number(data.qtdAcoes || 0),
+      precoAcao: Number(data.precoAcao || 0),
+      createdAt: toDateMaybe(data.createdAt)
     });
+  });
 
-    return patrimonio;
-}
+  window.__ALL_ROWS__ = allRows;
 
-// Obter mês atual
-function getMesAtual() {
-    const hoje = new Date();
-    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-}
+  // anos
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+  allRows.forEach(r => {
+    const d = clampDate(r.createdAt);
+    if (d) years.add(d.getFullYear());
+  });
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
+  if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
 
-// Calcular receitas do mês
-function calcularReceitasMes() {
-    const mesAtual = getMesAtual();
-    return transacoes
-        .filter(t => t.tipo === 'receita' && t.data.startsWith(mesAtual))
-        .reduce((sum, t) => sum + t.valor, 0);
-}
-
-// Calcular despesas do mês
-function calcularDespesasMes() {
-    const mesAtual = getMesAtual();
-    return transacoes
-        .filter(t => t.tipo === 'despesa' && t.data.startsWith(mesAtual))
-        .reduce((sum, t) => sum + t.valor, 0);
-}
-
-// Atualizar KPIs
-function atualizarKPIs() {
-    const patrimonio = calcularPatrimonio();
-    const receitas = calcularReceitasMes();
-    const despesas = calcularDespesasMes();
-
-    document.getElementById('totalPatrimonio').textContent = formatarMoeda(patrimonio);
-    document.getElementById('totalReceitas').textContent = formatarMoeda(receitas);
-    document.getElementById('totalDespesas').textContent = formatarMoeda(despesas);
-    document.getElementById('metaGoal').textContent = formatarMoeda(configuracoes.targetGoal);
-}
-
-// Formatar moeda
-function formatarMoeda(valor) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(valor);
-}
-
-// Atualizar tabela
-function atualizarTabela() {
-    const tbody = document.getElementById('transactionsTable');
-    tbody.innerHTML = '';
-
-    transacoes.forEach(t => {
-        let valor = t.valor;
-        let moedaDisplay = 'R$';
-
-        if (t.moeda === 'USD') {
-            moedaDisplay = 'US$';
-        }
-
-        let tipoClass = t.tipo === 'receita' ? 'badge-receita' : t.tipo === 'despesa' ? 'badge-despesa' : 'badge-investimento';
-        let tipoDisplay = t.tipo.charAt(0).toUpperCase() + t.tipo.slice(1);
-
-        const row = `
-            <tr>
-                <td>${formatarData(t.data)}</td>
-                <td><span class="badge ${tipoClass}">${tipoDisplay}</span></td>
-                <td>${t.categoria}</td>
-                <td>${t.descricao}</td>
-                <td>${moedaDisplay} ${valor.toFixed(2)}</td>
-                <td><small>${t.usuarioEmail}</small></td>
-                <td><button class="btn-delete" onclick="deletarTransacao('${t.id}')">Deletar</button></td>
-            </tr>
-        `;
-        tbody.innerHTML += row;
-    });
-}
-
-// Formatar data
-function formatarData(data) {
-    return new Intl.DateTimeFormat('pt-BR').format(new Date(data));
-}
-
-// Inicializar datas
-function inicializarDatas() {
-    const hoje = new Date().toISOString().split('T')[0];
-    document.getElementById('receitaData').value = hoje;
-    document.getElementById('despesaData').value = hoje;
-    document.getElementById('investimentoData').value = hoje;
-}
-
-// Gráficos (mesmo código anterior)
-let patrimonioChart, projecaoChart, categoriaChart, receitaDespesaChart;
-
-function atualizarGraficoPatrimonio() {
-    const ctx = document.getElementById('patrimonioChart').getContext('2d');
-    const dados = {};
-
-    transacoes.forEach(t => {
-        if (!dados[t.data]) {
-            dados[t.data] = 0;
-        }
-
-        let valor = t.valor;
-        if (t.moeda === 'USD') {
-            valor = valor * configuracoes.usdRate;
-        }
-
-        if (t.tipo === 'receita' || t.tipo === 'investimento') {
-            dados[t.data] += valor;
-        } else if (t.tipo === 'despesa') {
-            dados[t.data] -= valor;
-        }
-    });
-
-    const datas = Object.keys(dados).sort();
-    let patrimonio = 0;
-    const valores = datas.map(data => {
-        patrimonio += dados[data];
-        return patrimonio;
-    });
-
-    if (patrimonioChart) {
-        patrimonioChart.destroy();
+  buildMenu(
+    yearMenu,
+    sortedYears.map(y => ({ value: y, label: String(y) })),
+    selectedYear,
+    async (value, label) => {
+      selectedYear = Number(value);
+      if (yearValue) yearValue.textContent = label;
+      setDDOpen(yearDD, false);
+      renderAll(window.__ALL_ROWS__);
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
     }
+  );
 
-    patrimonioChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: datas.map(d => formatarData(d)),
-            datasets: [{
-                label: 'Patrimônio',
-                data: valores,
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 4,
-                pointBackgroundColor: '#667eea',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { display: true }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR');
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function atualizarGraficoProjecao() {
-    const ctx = document.getElementById('projecaoChart').getContext('2d');
-    const patrimonioAtual = calcularPatrimonio();
-    const anosProjecao = [];
-    const valoresProjecao = [];
-
-    for (let ano = 2026; ano <= 2030; ano++) {
-        const mesesPassados = (ano - 2026) * 12;
-        const monthlyRate = configuracoes.monthlyRate / 100;
-        const aporte = 1300;
-        
-        let valor = patrimonioAtual;
-        for (let mes = 0; mes < mesesPassados; mes++) {
-            valor = valor * (1 + monthlyRate) + aporte;
-        }
-
-        anosProjecao.push(ano.toString());
-        valoresProjecao.push(Math.round(valor));
+  buildMenu(
+    monthMenu,
+    [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
+    selectedMonth,
+    async (value, label) => {
+      selectedMonth = value === "all" ? "all" : Number(value);
+      if (monthValue) monthValue.textContent = label;
+      setDDOpen(monthDD, false);
+      renderAll(window.__ALL_ROWS__);
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
     }
+  );
 
-    if (projecaoChart) {
-        projecaoChart.destroy();
-    }
+  if (yearValue) yearValue.textContent = String(selectedYear);
 
-    projecaoChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: anosProjecao,
-            datasets: [{
-                label: 'Patrimônio Projetado',
-                data: valoresProjecao,
-                backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(118, 75, 162, 0.8)',
-                    'rgba(245, 87, 108, 0.8)',
-                    'rgba(240, 147, 251, 0.8)',
-                    'rgba(67, 233, 123, 0.8)'
-                ],
-                borderRadius: 10,
-                borderSkipped: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { display: true }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR');
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
+  // IMPORTANTE: inicializa os dropdowns de investimento (uma vez)
+  setupInvestDropdownsOnce();
 
-function atualizarGraficoCategoria() {
-    const ctx = document.getElementById('categoriaChart').getContext('2d');
-    const categorias = {};
-
-    transacoes.forEach(t => {
-        if (!categorias[t.categoria]) {
-            categorias[t.categoria] = 0;
-        }
-
-        let valor = t.valor;
-        if (t.moeda === 'USD') {
-            valor = valor * configuracoes.usdRate;
-        }
-
-        if (t.tipo === 'receita' || t.tipo === 'investimento') {
-            categorias[t.categoria] += valor;
-        }
-    });
-
-    const cores = [
-        '#667eea', '#764ba2', '#f5576c', '#f093fb', '#43e97b', 
-        '#38f9d7', '#4facfe', '#00f2fe', '#f5af19', '#ff6b6b'
-    ];
-
-    if (categoriaChart) {
-        categoriaChart.destroy();
-    }
-
-    categoriaChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(categorias),
-            datasets: [{
-                data: Object.values(categorias),
-                backgroundColor: cores.slice(0, Object.keys(categorias).length)
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
-    });
-}
-
-function atualizarGraficoReceitaDespesa() {
-    const ctx = document.getElementById('receitaDespesaChart').getContext('2d');
-    const meses = {};
-
-    transacoes.forEach(t => {
-        const mesChave = t.data.substring(0, 7);
-        if (!meses[mesChave]) {
-            meses[mesChave] = { receita: 0, despesa: 0 };
-        }
-
-        let valor = t.valor;
-        if (t.moeda === 'USD') {
-            valor = valor * configuracoes.usdRate;
-        }
-
-        if (t.tipo === 'receita' || t.tipo === 'investimento') {
-            meses[mesChave].receita += valor;
-        } else if (t.tipo === 'despesa') {
-            meses[mesChave].despesa += valor;
-        }
-    });
-
-    const mesesOrdenados = Object.keys(meses).sort();
-    const receitas = mesesOrdenados.map(m => meses[m].receita);
-    const despesas = mesesOrdenados.map(m => meses[m].despesa);
-
-    if (receitaDespesaChart) {
-        receitaDespesaChart.destroy();
-    }
-
-    receitaDespesaChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: mesesOrdenados.map(m => m.replace('-', '/')),
-            datasets: [
-                {
-                    label: 'Receitas',
-                    data: receitas,
-                    backgroundColor: 'rgba(67, 233, 123, 0.8)',
-                    borderRadius: 8
-                },
-                {
-                    label: 'Despesas',
-                    data: despesas,
-                    backgroundColor: 'rgba(245, 87, 108, 0.8)',
-                    borderRadius: 8
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { position: 'top' }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR');
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Salvar configurações
-async function salvarConfigurações() {
-    const usdRate = parseFloat(document.getElementById('usdRate').value);
-    const monthlyRate = parseFloat(document.getElementById('monthlyRate').value);
-    const targetGoal = parseFloat(document.getElementById('targetGoal').value);
-
-    if (!usdRate || !monthlyRate || !targetGoal) {
-        alert('Preencha todos os campos!');
-        return;
-    }
-
-    try {
-        await db.collection('configuracoes').doc('geral').set({
-            usdRate: usdRate,
-            monthlyRate: monthlyRate,
-            targetGoal: targetGoal,
-            ultimaAtualizacao: new Date()
-        });
-
-        alert('Configurações salvas com sucesso!');
-        const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
-        modal.hide();
-    } catch (error) {
-        alert('Erro ao salvar: ' + error.message);
-    }
-}
-
-// Atualizar tudo
-function atualizar() {
-    atualizarKPIs();
-    atualizarTabela();
-    atualizarGraficoPatrimonio();
-    atualizarGraficoProjecao();
-    atualizarGraficoCategoria();
-    atualizarGraficoReceitaDespesa();
-}
+  renderAll(allRows);
+  await ensureQuotesThenRerender(allRows);
+});
