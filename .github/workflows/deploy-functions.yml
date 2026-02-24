@@ -11,30 +11,32 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Debug (list root + show firebase.json)
         run: |
-          echo "PWD:"
           pwd
-          echo "ROOT FILES:"
           ls -la
-          echo "FIND firebase.json:"
           find . -maxdepth 3 -name "firebase.json" -print
-          echo "CAT firebase.json:"
           cat firebase.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 18
 
+      # Autentica no Google Cloud usando o JSON da Service Account
+      - id: gcp-auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+
       - name: Install Firebase CLI
         run: npm i -g firebase-tools
-
-      - name: Write service account
-        run: |
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > $HOME/firebase-sa.json
 
       - name: Install functions deps
         run: |
@@ -42,7 +44,5 @@ jobs:
           npm install
 
       - name: Deploy Functions
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-sa.json
         run: |
           firebase deploy --only functions --project financial-dashboard-a2b16
