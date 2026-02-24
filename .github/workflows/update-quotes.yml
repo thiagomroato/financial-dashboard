@@ -3,7 +3,7 @@ name: Update Quotes (cron)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */12 * * *" # a cada 12 horas (no minuto 00)
+    - cron: "0 */12 * * *" # a cada 12 horas (UTC)
 
 jobs:
   update:
@@ -24,4 +24,5 @@ jobs:
       - name: Update quotes in Firestore
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          ALPHAVANTAGE_KEY: ${{ secrets.ALPHAVANTAGE_KEY }}
         run: node scripts/update-quotes.mjs
