@@ -5,6 +5,7 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  getDoc,
   updateDoc,
   serverTimestamp,
   query,
@@ -13,20 +14,15 @@ import {
 
 /**
  * =====================
- * CONFIG (Alpha Vantage)
+ * CONFIG (Quotes via Firestore - written by GitHub Actions)
  * =====================
+ * Espera docs em: collection "quotes", docId = símbolo (ex: "AAPL", "PETR4.SA")
+ * com campo: { price: number, updatedAt: Timestamp }
  */
-const ALPHAVANTAGE_KEY = "JOE36PHP5PDKT55S";
-const AV_BASE = "https://www.alphavantage.co/query";
-const AV_FUNCTION = "GLOBAL_QUOTE";
 
-// Atualização diária 10:00:00 (local do browser)
-const DAILY_QUOTE_HOUR = 10;
-const DAILY_QUOTE_MINUTE = 0;
-const DAILY_QUOTE_SECOND = 0;
-
-// throttle simples p/ não spammar AV
-const AV_DELAY_MS = 2000;
+// cache local no browser (só para não ler Firestore toda hora)
+const quoteCache = new Map(); // symbol => { price, updatedAtMs }
+const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
 /**
  * ==========
@@ -57,10 +53,6 @@ function pct(n) {
   return `${(x * 100).toFixed(2)}%`;
 }
 
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
 function normalizeTicker(raw) {
   return String(raw || "").trim().toUpperCase();
 }
@@ -69,7 +61,7 @@ function isBrazilLikeTicker(ticker) {
   return /[0-9]$/.test(ticker) || ticker.endsWith(".SA");
 }
 
-function toAlphaVantageSymbolCandidates(rawTicker) {
+function toQuoteDocIdCandidates(rawTicker) {
   const t = normalizeTicker(rawTicker);
   if (!t) return [];
 
@@ -344,30 +336,25 @@ if (valorEl) valorEl.addEventListener("input", () => investKind === "cdb" && upd
 
 /**
  * ==========
- * Alpha Vantage cache
+ * Quotes (from Firestore)
  * ==========
  */
-const quoteCache = new Map(); // symbol => { price, updatedAt }
-const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+async function fetchQuoteFromFirestore(docId) {
+  const snap = await getDoc(doc(db, "quotes", docId));
+  if (!snap.exists()) return null;
 
-async function fetchQuoteForSymbol(symbol) {
-  const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
-  const res = await fetch(url);
-  const data = await res.json();
-
-  if (data?.Note) throw new Error("Alpha Vantage rate limit: " + data.Note);
-  if (data?.Information) throw new Error("Alpha Vantage: " + data.Information);
-  if (data?.["Error Message"]) throw new Error("Alpha Vantage: " + data["Error Message"]);
-
-  const quote = data?.["Global Quote"];
-  const price = Number(quote?.["05. price"]);
+  const data = snap.data();
+  const price = Number(data?.price);
   if (!Number.isFinite(price) || price <= 0) return null;
 
-  return price;
+  const updatedAtDate = toDateMaybe(data?.updatedAt);
+  const updatedAtMs = updatedAtDate ? updatedAtDate.getTime() : Date.now();
+
+  return { price, updatedAtMs };
 }
 
-async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
-  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
+async function fetchQuoteSmart(rawTicker, { force = false } = {}) {
+  const candidates = toQuoteDocIdCandidates(rawTicker);
   if (!candidates.length) return null;
 
   const now = Date.now();
@@ -382,16 +369,11 @@ async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
   }
 
   for (const sym of candidates) {
-    try {
-      const price = await fetchQuoteForSymbol(sym);
-      if (price != null) {
-        quoteCache.set(sym, { price, updatedAt: now });
-        return { symbolUsed: sym, price };
-      }
-    } catch (e) {
-      console.warn("Cotação falhou:", sym, e?.message || e);
+    const q = await fetchQuoteFromFirestore(sym);
+    if (q?.price) {
+      quoteCache.set(sym, { price: q.price, updatedAt: now });
+      return { symbolUsed: sym, price: q.price };
     }
-    await sleep(AV_DELAY_MS);
   }
 
   return null;
@@ -406,13 +388,16 @@ async function updateQuotesForInvestments(rows, { force = false } = {}) {
   ));
 
   for (const t of tickers) {
-    await fetchAlphaVantageQuoteSmart(t, { force });
-    await sleep(AV_DELAY_MS);
+    try {
+      await fetchQuoteSmart(t, { force });
+    } catch (e) {
+      console.warn("Quote load failed:", t, e?.message || e);
+    }
   }
 }
 
 function getCachedQuoteForTicker(rawTicker) {
-  const candidates = toAlphaVantageSymbolCandidates(rawTicker);
+  const candidates = toQuoteDocIdCandidates(rawTicker);
   for (const sym of candidates) {
     const cached = quoteCache.get(sym);
     if (cached?.price) return { symbol: sym, price: cached.price, updatedAt: cached.updatedAt };
@@ -783,34 +768,6 @@ async function addCurrent() {
 
 /**
  * ==========
- * Scheduler 10:00:00
- * ==========
- */
-function msUntilNextTenAM() {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(DAILY_QUOTE_HOUR, DAILY_QUOTE_MINUTE, DAILY_QUOTE_SECOND, 0);
-  if (next <= now) next.setDate(next.getDate() + 1);
-  return next.getTime() - now.getTime();
-}
-
-function scheduleDailyQuoteUpdate() {
-  const delay = msUntilNextTenAM();
-  setTimeout(async () => {
-    try {
-      if (window.__ALL_ROWS__) {
-        const filtered = computeFilteredRows(window.__ALL_ROWS__);
-        await updateQuotesForInvestments(filtered, { force: true });
-        renderAll(window.__ALL_ROWS__);
-      }
-    } finally {
-      scheduleDailyQuoteUpdate();
-    }
-  }, delay);
-}
-
-/**
- * ==========
  * Force quote refresh after snapshot
  * ==========
  */
@@ -873,8 +830,6 @@ if (clearFiltersBtn) {
     }
   });
 }
-
-scheduleDailyQuoteUpdate();
 
 /**
  * ==========
