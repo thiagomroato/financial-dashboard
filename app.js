@@ -16,7 +16,7 @@ import {
  * CONFIG (Alpha Vantage)
  * =====================
  */
-const ALPHAVANTAGE_KEY = "SUA_CHAVE_AQUI";
+const ALPHAVANTAGE_KEY = "JOE36PHP5PDKT55S";
 const AV_BASE = "https://www.alphavantage.co/query";
 const AV_FUNCTION = "GLOBAL_QUOTE";
 
