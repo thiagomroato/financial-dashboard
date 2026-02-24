@@ -34,7 +34,6 @@ Um aplicativo web completo para gerenciamento financeiro compartilhado em tempo 
 ## 🚀 Como Usar
 
 ### 1. Acessar a Aplicação
-https://thiagomroato.github.io/financial-dashboard
 
 ### 2. Criar uma Conta
 - Clique em **"Criar Conta"**
