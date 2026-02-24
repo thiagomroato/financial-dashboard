@@ -16,13 +16,20 @@ import {
  * =====================
  * CONFIG (Quotes via Firestore - written by GitHub Actions)
  * =====================
- * Espera docs em: collection "quotes", docId = símbolo (ex: "AAPL", "PETR4.SA")
- * com campo: { price: number, updatedAt: Timestamp }
+ * Espera docs em: collection "quotes"
+ * - docId = ticker (ex: "AAPL", "PETR4.SA")
+ * - docId = "USD-BRL" (taxa USD->BRL)
+ *
+ * Formato esperado:
+ * { price: number, updatedAt: Timestamp, source?: string, error?: string }
  */
 
 // cache local no browser (só para não ler Firestore toda hora)
-const quoteCache = new Map(); // symbol => { price, updatedAtMs }
+const quoteCache = new Map(); // symbol => { price, updatedAt }
 const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+// FX
+const FX_USD_BRL_DOC_ID = "USD-BRL";
 
 /**
  * ==========
@@ -30,6 +37,7 @@ const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
  * ==========
  */
 const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const fmtUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 function toDateMaybe(ts) {
   if (!ts) return null;
@@ -45,6 +53,11 @@ function clampDate(d) {
 function brl(n) {
   const x = Number(n || 0);
   return fmtBRL.format(Number.isFinite(x) ? x : 0);
+}
+
+function usd(n) {
+  const x = Number(n || 0);
+  return fmtUSD.format(Number.isFinite(x) ? x : 0);
 }
 
 function pct(n) {
@@ -71,6 +84,13 @@ function toQuoteDocIdCandidates(rawTicker) {
   }
 
   return Array.from(new Set([t, `${t}.SA`]));
+}
+
+function usdToBrl(usdValue, usdBrl) {
+  const u = Number(usdValue);
+  const fx = Number(usdBrl);
+  if (!Number.isFinite(u) || !Number.isFinite(fx) || fx <= 0) return null;
+  return u * fx;
 }
 
 const monthNames = [
@@ -184,11 +204,23 @@ function showAddForm(show) {
 
 /**
  * Total automático (AÇÕES)
+ * - BR: total em BRL
+ * - US: mostra "total" convertido para BRL usando a taxa do cache (se existir)
  */
 function getInvestTotalStock() {
   const qtd = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
-  return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
+
+  const q = Number.isFinite(qtd) ? qtd : 0;
+  const p = Number.isFinite(preco) ? preco : 0;
+
+  const raw = q * p; // BRL (BR) ou USD (US)
+
+  if (stockMarket !== "US") return raw;
+
+  const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+  const converted = usdToBrl(raw, fx);
+  return converted ?? 0;
 }
 
 function updateInvestTotalUIStock() {
@@ -291,6 +323,9 @@ function setupInvestDropdownsOnce() {
       stockMarket = String(value);
       if (stockMarketValue) stockMarketValue.textContent = label;
       setDDOpen(stockMarketDD, false);
+
+      // ao trocar BR/US, recalcula preview do total
+      if (investKind === "stock") updateInvestTotalUIStock();
     }
   );
 
@@ -347,10 +382,7 @@ async function fetchQuoteFromFirestore(docId) {
   const price = Number(data?.price);
   if (!Number.isFinite(price) || price <= 0) return null;
 
-  const updatedAtDate = toDateMaybe(data?.updatedAt);
-  const updatedAtMs = updatedAtDate ? updatedAtDate.getTime() : Date.now();
-
-  return { price, updatedAtMs };
+  return { price, updatedAt: Date.now() };
 }
 
 async function fetchQuoteSmart(rawTicker, { force = false } = {}) {
@@ -379,7 +411,18 @@ async function fetchQuoteSmart(rawTicker, { force = false } = {}) {
   return null;
 }
 
+async function ensureUsdBrlQuote({ force = false } = {}) {
+  try {
+    await fetchQuoteSmart(FX_USD_BRL_DOC_ID, { force });
+  } catch {
+    // ignore
+  }
+}
+
 async function updateQuotesForInvestments(rows, { force = false } = {}) {
+  // sempre tenta carregar USD/BRL (necessário para ações US)
+  await ensureUsdBrlQuote({ force });
+
   const tickers = Array.from(new Set(
     rows
       .filter(r => r.tipo === "investimento" && r.investKind !== "cdb")
@@ -418,7 +461,16 @@ function getCurrentValueForInvestmentRow(row) {
   const q = getCachedQuoteForTicker(t);
   if (!q?.price) return null;
 
-  return qtd * q.price;
+  // BR: quote já em BRL
+  if (row.market !== "US") {
+    return qtd * q.price;
+  }
+
+  // US: quote em USD -> converte para BRL com USD/BRL atual
+  const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+  const currentUsd = qtd * q.price;
+  const currentBrl = usdToBrl(currentUsd, fx);
+  return currentBrl;
 }
 
 /**
@@ -620,11 +672,20 @@ function renderTableAndKpis(filteredRows) {
 
     if (isStockInvestment && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
       const q = getCachedQuoteForTicker(r.ticker);
+
       if (q?.price) {
-        valorAtual = r.qtdAcoes * q.price;
-        pl = valorAtual - Number(r.valor || 0);
-        plPct = r.valor > 0 ? (pl / r.valor) : 0;
-        quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
+        // valorAtual sempre em BRL
+        valorAtual = getCurrentValueForInvestmentRow(r);
+
+        pl = (valorAtual == null ? null : (valorAtual - Number(r.valor || 0)));
+        plPct = (pl != null && r.valor > 0) ? (pl / r.valor) : null;
+
+        if (r.market === "US") {
+          const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+          quoteLine = `<span>Cotação (${q.symbol}): ${usd(q.price)} ${fx ? `| USD/BRL: ${fx.toFixed(4)}` : ""}</span>`;
+        } else {
+          quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
+        }
       }
     }
 
@@ -632,9 +693,15 @@ function renderTableAndKpis(filteredRows) {
       r.tipo === "investimento"
         ? (r.investKind === "cdb"
             ? `${r.descricao ?? ""} — CDB ${Number(r.cdbPctCdi || 0)}% do CDI`
-            : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)} ${r.market === "US" ? "(USD)" : "(BRL)"}`
+            : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${r.market === "US" ? usd(r.precoAcao ?? 0) : brl(r.precoAcao ?? 0)} ${r.market === "US" ? "(USD)" : "(BRL)"}`
           )
         : (r.descricao ?? "");
+
+    // Linha extra de "investido" para US
+    const investedExtraUS =
+      (r.tipo === "investimento" && r.investKind !== "cdb" && r.market === "US" && Number.isFinite(r.valorUSD) && r.valorUSD > 0)
+        ? `<div class="val-sub"><span class="muted">(${usd(r.valorUSD)} @ câmbio ${Number(r.fxUSDBRL || 0).toFixed(4)})</span></div>`
+        : "";
 
     const valorCell = r.tipo === "investimento"
       ? (r.investKind === "cdb"
@@ -645,10 +712,11 @@ function renderTableAndKpis(filteredRows) {
           : `
             <div class="val-col">
               <div class="val-main">Investido: ${brl(r.valor)}</div>
+              ${investedExtraUS}
               <div class="val-sub">${quoteLine}</div>
               <div class="val-sub">
                 ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
-                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
+                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)}${plPct == null ? "" : ` (${pct(plPct)})`}</span>`}
               </div>
             </div>
           `)
@@ -708,10 +776,36 @@ async function addCurrent() {
       const ticker = normalizeTicker(tickerEl?.value || "");
       const qtd = Number(qtdAcoesEl?.value || 0);
       const preco = Number(precoAcaoEl?.value || 0);
-      const total = qtd * preco;
 
       if (!Number.isFinite(qtd) || qtd <= 0) return;
       if (!Number.isFinite(preco) || preco <= 0) return;
+
+      // precoAcao digitado:
+      // - BR: BRL
+      // - US: USD
+      let fxUSDBRL = null;
+      let valorUSD = null;
+      let totalBRL = null;
+
+      if (market === "US") {
+        // garante que temos USD/BRL no cache (se não tiver, tenta buscar do Firestore)
+        let fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+        if (!fx) {
+          await ensureUsdBrlQuote({ force: true });
+          fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+        }
+
+        if (!Number.isFinite(fx) || fx <= 0) {
+          alert("Não foi possível obter a cotação USD/BRL. Rode o cron (Update Quotes) e tente novamente.");
+          return;
+        }
+
+        fxUSDBRL = fx;
+        valorUSD = qtd * preco;      // USD
+        totalBRL = valorUSD * fx;    // BRL
+      } else {
+        totalBRL = qtd * preco;      // BRL
+      }
 
       await addDoc(ref, {
         descricao,
@@ -720,8 +814,10 @@ async function addCurrent() {
         market,
         ticker,
         qtdAcoes: qtd,
-        precoAcao: preco,
-        valor: total,
+        precoAcao: preco,   // BRL (BR) ou USD (US)
+        valor: totalBRL,    // sempre BRL
+        valorUSD,           // só US
+        fxUSDBRL,           // só US
         createdAt: serverTimestamp()
       });
 
@@ -845,6 +941,8 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       descricao: data.descricao,
       tipo: data.tipo,
       valor: Number(data.valor || 0),
+      valorUSD: data.valorUSD == null ? null : Number(data.valorUSD || 0),
+      fxUSDBRL: data.fxUSDBRL == null ? null : Number(data.fxUSDBRL || 0),
       investKind: data.investKind,
       market: data.market,
       cdbPctCdi: Number(data.cdbPctCdi || 0),
