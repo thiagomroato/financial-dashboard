@@ -654,3 +654,5 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   box-shadow: 0 0 0 3px rgba(109,124,255,.12);
   transform: translateY(-1px);
 }
+/* deixa dropdowns dentro do investFields com o mesmo respiro dos outros */
+#investFields .dd { margin-top: 6px; }
