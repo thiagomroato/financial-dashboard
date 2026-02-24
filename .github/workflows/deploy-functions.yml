@@ -15,6 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug (list root + show firebase.json)
+        run: |
+          echo "PWD:"
+          pwd
+          echo "ROOT FILES:"
+          ls -la
+          echo "FIND firebase.json:"
+          find . -maxdepth 3 -name "firebase.json" -print
+          echo "CAT firebase.json:"
+          cat firebase.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
