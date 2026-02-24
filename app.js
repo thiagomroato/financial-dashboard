@@ -73,13 +73,11 @@ function toAlphaVantageSymbolCandidates(rawTicker) {
   const t = normalizeTicker(rawTicker);
   if (!t) return [];
 
-  // Brasil: preferir .SA primeiro
   if (isBrazilLikeTicker(t)) {
     const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
     return Array.from(new Set([withSA, t]));
   }
 
-  // EUA: usar como está
   return Array.from(new Set([t, `${t}.SA`]));
 }
 
@@ -109,21 +107,31 @@ const addFormEl = document.getElementById("addForm");
 const descricaoEl = document.getElementById("descricao");
 const valorEl = document.getElementById("valor");
 
-// Invest inputs (base)
+// Invest fields containers
 const investFieldsEl = document.getElementById("investFields");
+const stockFieldsEl = document.getElementById("stockFields");
+const cdbFieldsEl = document.getElementById("cdbFields");
 const investTotalEl = document.getElementById("investTotal");
 
-// Invest kind + subfields (NOVO)
-const investKindEl = document.getElementById("investKind"); // "stock" | "cdb"
-const stockFieldsEl = document.getElementById("stockFields");
-const stockMarketEl = document.getElementById("stockMarket"); // "BR" | "US"
-const cdbFieldsEl = document.getElementById("cdbFields");
-const cdbPctCdiEl = document.getElementById("cdbPctCdi");
-
-// Stock fields (mantém ids antigos pra não quebrar)
+// Stock inputs
 const tickerEl = document.getElementById("ticker");
 const qtdAcoesEl = document.getElementById("qtdAcoes");
 const precoAcaoEl = document.getElementById("precoAcao");
+
+// CDB input
+const cdbPctCdiEl = document.getElementById("cdbPctCdi");
+
+// InvestKind DD
+const investKindDD = document.getElementById("investKindDD");
+const investKindBtn = document.getElementById("investKindBtn");
+const investKindMenu = document.getElementById("investKindMenu");
+const investKindValue = document.getElementById("investKindValue");
+
+// StockMarket DD
+const stockMarketDD = document.getElementById("stockMarketDD");
+const stockMarketBtn = document.getElementById("stockMarketBtn");
+const stockMarketMenu = document.getElementById("stockMarketMenu");
+const stockMarketValue = document.getElementById("stockMarketValue");
 
 // Botões
 const btnReceita = document.getElementById("btnReceita");
@@ -161,6 +169,10 @@ let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
 let currentAddType = null;
 
+// Invest state (subtipo e mercado)
+let investKind = "stock";  // "stock" | "cdb"
+let stockMarket = "BR";    // "BR" | "US"
+
 /**
  * ==========
  * UI helpers
@@ -178,9 +190,6 @@ function showAddForm(show) {
   addFormEl.style.display = show ? "block" : "none";
 }
 
-/**
- * Total automático apenas para AÇÕES (stock)
- */
 function getInvestTotalStock() {
   const qtd = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
@@ -190,36 +199,110 @@ function getInvestTotalStock() {
 function updateInvestTotalUIStock() {
   const total = getInvestTotalStock();
   if (investTotalEl) investTotalEl.textContent = brl(total);
-  // opcional: preencher o campo "valor" com total para manter compatibilidade
   if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
 }
 
 function updateInvestTotalUICdb() {
-  // Para CDB, o "valor" é o input #valor
   const total = Number(valorEl?.value || 0);
   if (investTotalEl) investTotalEl.textContent = brl(total);
 }
 
 function applyInvestKindUI() {
-  const kind = investKindEl?.value || "stock";
+  const isStock = investKind === "stock";
+  if (stockFieldsEl) stockFieldsEl.hidden = !isStock;
+  if (cdbFieldsEl) cdbFieldsEl.hidden = isStock;
 
-  if (stockFieldsEl) stockFieldsEl.hidden = kind !== "stock";
-  if (cdbFieldsEl) cdbFieldsEl.hidden = kind !== "cdb";
-
-  if (kind === "stock") updateInvestTotalUIStock();
+  if (isStock) updateInvestTotalUIStock();
   else updateInvestTotalUICdb();
 }
 
-if (investKindEl) investKindEl.addEventListener("change", applyInvestKindUI);
-if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", () => {
-  if ((investKindEl?.value || "stock") === "stock") updateInvestTotalUIStock();
-});
-if (precoAcaoEl) precoAcaoEl.addEventListener("input", () => {
-  if ((investKindEl?.value || "stock") === "stock") updateInvestTotalUIStock();
-});
-if (valorEl) valorEl.addEventListener("input", () => {
-  if ((investKindEl?.value || "stock") === "cdb") updateInvestTotalUICdb();
-});
+/**
+ * ==========
+ * Dropdown custom (Ano/Mês + Reuso)
+ * ==========
+ */
+function setDDOpen(dd, open) {
+  if (!dd) return;
+  dd.classList.toggle("is-open", open);
+  const btn = dd.querySelector(".dd-btn");
+  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function buildMenu(menuEl, items, activeValue, onPick) {
+  if (!menuEl) return;
+  menuEl.innerHTML = "";
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "dd-item" + (String(item.value) === String(activeValue) ? " is-active" : "");
+    div.setAttribute("role", "option");
+    div.innerHTML = `<span class="mini-dot" aria-hidden="true"></span><span>${item.label}</span>`;
+    div.onclick = () => onPick(item.value, item.label);
+    menuEl.appendChild(div);
+  });
+}
+
+function wireDropdown(dd, btnEl, setOpen) {
+  if (!dd || !btnEl) return;
+
+  btnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setOpen(!dd.classList.contains("is-open"));
+  });
+
+  document.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+}
+
+let investDDSetupDone = false;
+function setupInvestDropdownsOnce() {
+  if (investDDSetupDone) return;
+  investDDSetupDone = true;
+
+  // Open/close
+  wireDropdown(investKindDD, investKindBtn, (open) => {
+    setDDOpen(investKindDD, open);
+    setDDOpen(stockMarketDD, false);
+  });
+
+  wireDropdown(stockMarketDD, stockMarketBtn, (open) => {
+    setDDOpen(stockMarketDD, open);
+    setDDOpen(investKindDD, false);
+  });
+
+  // Menus
+  buildMenu(
+    investKindMenu,
+    [
+      { value: "stock", label: "Ação" },
+      { value: "cdb", label: "CDB" }
+    ],
+    investKind,
+    (value, label) => {
+      investKind = String(value);
+      if (investKindValue) investKindValue.textContent = label;
+      setDDOpen(investKindDD, false);
+      applyInvestKindUI();
+    }
+  );
+
+  buildMenu(
+    stockMarketMenu,
+    [
+      { value: "BR", label: "Brasil (BRL)" },
+      { value: "US", label: "EUA (USD)" }
+    ],
+    stockMarket,
+    (value, label) => {
+      stockMarket = String(value);
+      if (stockMarketValue) stockMarketValue.textContent = label;
+      setDDOpen(stockMarketDD, false);
+    }
+  );
+
+  // Valores iniciais
+  if (investKindValue) investKindValue.textContent = investKind === "stock" ? "Ação" : "CDB";
+  if (stockMarketValue) stockMarketValue.textContent = stockMarket === "BR" ? "Brasil (BRL)" : "EUA (USD)";
+}
 
 /**
  * Toggle:
@@ -246,9 +329,15 @@ function toggleAddType(tipo, activeBtn) {
   if (investFieldsEl) investFieldsEl.hidden = !isInvest;
 
   if (isInvest) {
+    setupInvestDropdownsOnce();
     applyInvestKindUI();
   }
 }
+
+// total UI events
+if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
+if (precoAcaoEl) precoAcaoEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
+if (valorEl) valorEl.addEventListener("input", () => investKind === "cdb" && updateInvestTotalUICdb());
 
 /**
  * ==========
@@ -329,7 +418,6 @@ function getCachedQuoteForTicker(rawTicker) {
 }
 
 function getCurrentValueForInvestmentRow(row) {
-  // Apenas para AÇÃO (stock)
   if (row.tipo !== "investimento") return null;
   if (row.investKind === "cdb") return null;
 
@@ -406,9 +494,6 @@ function computeFilteredRows(allRows) {
 }
 
 function sumInvestmentsValue(rows) {
-  // Regra:
-  // - stock: usa VALOR ATUAL se tiver cotação, senão usa valor investido (fallback)
-  // - cdb: usa valor investido (principal), pois não há cálculo de rentabilidade aqui ainda
   let total = 0;
 
   rows.forEach(r => {
@@ -549,7 +634,7 @@ function renderTableAndKpis(filteredRows) {
       const q = getCachedQuoteForTicker(r.ticker);
       if (q?.price) {
         valorAtual = r.qtdAcoes * q.price;
-        pl = valorAtual - Number(r.valor || 0); // custo
+        pl = valorAtual - Number(r.valor || 0);
         plPct = r.valor > 0 ? (pl / r.valor) : 0;
         quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
       }
@@ -622,43 +707,6 @@ function renderAll(allRows) {
 
 /**
  * ==========
- * Dropdown custom
- * ==========
- */
-function setDDOpen(dd, open) {
-  if (!dd) return;
-  dd.classList.toggle("is-open", open);
-  const btn = dd.querySelector(".dd-btn");
-  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
-}
-
-function buildMenu(menuEl, items, activeValue, onPick) {
-  if (!menuEl) return;
-  menuEl.innerHTML = "";
-  items.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "dd-item" + (String(item.value) === String(activeValue) ? " is-active" : "");
-    div.setAttribute("role", "option");
-    div.innerHTML = `<span class="mini-dot" aria-hidden="true"></span><span>${item.label}</span>`;
-    div.onclick = () => onPick(item.value, item.label);
-    menuEl.appendChild(div);
-  });
-}
-
-function wireDropdown(dd, btnEl, setOpen) {
-  if (!dd || !btnEl) return;
-
-  btnEl.addEventListener("click", (e) => {
-    e.stopPropagation();
-    setOpen(!dd.classList.contains("is-open"));
-  });
-
-  document.addEventListener("click", () => setOpen(false));
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
-}
-
-/**
- * ==========
  * Add
  * ==========
  */
@@ -667,10 +715,8 @@ async function addCurrent() {
   if (!descricao || !currentAddType) return;
 
   if (currentAddType === "investimento") {
-    const kind = investKindEl?.value || "stock";
-
-    if (kind === "stock") {
-      const market = stockMarketEl?.value || "BR";
+    if (investKind === "stock") {
+      const market = stockMarket;
       const ticker = normalizeTicker(tickerEl?.value || "");
       const qtd = Number(qtdAcoesEl?.value || 0);
       const preco = Number(precoAcaoEl?.value || 0);
@@ -683,11 +729,11 @@ async function addCurrent() {
         descricao,
         tipo: "investimento",
         investKind: "stock",
-        market, // "BR" | "US"
+        market,
         ticker,
         qtdAcoes: qtd,
         precoAcao: preco,
-        valor: total, // custo investido
+        valor: total,
         createdAt: serverTimestamp()
       });
 
@@ -711,7 +757,7 @@ async function addCurrent() {
       descricao,
       tipo: "investimento",
       investKind: "cdb",
-      valor, // principal
+      valor,
       cdbPctCdi: pctCdi,
       createdAt: serverTimestamp()
     });
@@ -780,7 +826,7 @@ async function ensureQuotesThenRerender(allRows) {
 
 /**
  * ==========
- * Wire UI (TOGGLE)
+ * Wire UI
  * ==========
  */
 if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receita", btnReceita));
@@ -799,6 +845,7 @@ if (investFieldsEl) investFieldsEl.hidden = true;
 if (yearValue) yearValue.textContent = String(selectedYear);
 if (monthValue) monthValue.textContent = "Todos";
 
+// Ano/Mês dropdown
 wireDropdown(yearDD, yearBtn, (open) => {
   setDDOpen(yearDD, open);
   setDDOpen(monthDD, false);
@@ -840,8 +887,8 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       descricao: data.descricao,
       tipo: data.tipo,
       valor: Number(data.valor || 0),
-      investKind: data.investKind,         // "stock" | "cdb"
-      market: data.market,                 // "BR" | "US"
+      investKind: data.investKind,
+      market: data.market,
       cdbPctCdi: Number(data.cdbPctCdi || 0),
       ticker: data.ticker,
       qtdAcoes: Number(data.qtdAcoes || 0),
@@ -852,47 +899,44 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   window.__ALL_ROWS__ = allRows;
 
+  // anos
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+  allRows.forEach(r => {
+    const d = clampDate(r.createdAt);
+    if (d) years.add(d.getFullYear());
+  });
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
+  if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
+
+  buildMenu(
+    yearMenu,
+    sortedYears.map(y => ({ value: y, label: String(y) })),
+    selectedYear,
+    async (value, label) => {
+      selectedYear = Number(value);
+      if (yearValue) yearValue.textContent = label;
+      setDDOpen(yearDD, false);
+      renderAll(window.__ALL_ROWS__);
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
+    }
+  );
+
+  buildMenu(
+    monthMenu,
+    [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
+    selectedMonth,
+    async (value, label) => {
+      selectedMonth = value === "all" ? "all" : Number(value);
+      if (monthValue) monthValue.textContent = label;
+      setDDOpen(monthDD, false);
+      renderAll(window.__ALL_ROWS__);
+      await ensureQuotesThenRerender(window.__ALL_ROWS__);
+    }
+  );
+
+  if (yearValue) yearValue.textContent = String(selectedYear);
+
   renderAll(allRows);
-
-  if (yearMenu && monthMenu && yearValue && monthValue) {
-    const currentYear = new Date().getFullYear();
-    const years = new Set([currentYear]);
-    allRows.forEach(r => {
-      const d = clampDate(r.createdAt);
-      if (d) years.add(d.getFullYear());
-    });
-
-    const sortedYears = Array.from(years).sort((a, b) => b - a);
-    if (!sortedYears.includes(selectedYear)) selectedYear = currentYear;
-
-    buildMenu(
-      yearMenu,
-      sortedYears.map(y => ({ value: y, label: String(y) })),
-      selectedYear,
-      async (value, label) => {
-        selectedYear = Number(value);
-        yearValue.textContent = label;
-        setDDOpen(yearDD, false);
-        renderAll(window.__ALL_ROWS__);
-        await ensureQuotesThenRerender(window.__ALL_ROWS__);
-      }
-    );
-
-    buildMenu(
-      monthMenu,
-      [{ value: "all", label: "Todos" }, ...monthNames.map((m, i) => ({ value: i, label: m }))],
-      selectedMonth,
-      async (value, label) => {
-        selectedMonth = value === "all" ? "all" : Number(value);
-        monthValue.textContent = label;
-        setDDOpen(monthDD, false);
-        renderAll(window.__ALL_ROWS__);
-        await ensureQuotesThenRerender(window.__ALL_ROWS__);
-      }
-    );
-
-    yearValue.textContent = String(selectedYear);
-  }
-
   await ensureQuotesThenRerender(allRows);
 });
