@@ -109,12 +109,21 @@ const addFormEl = document.getElementById("addForm");
 const descricaoEl = document.getElementById("descricao");
 const valorEl = document.getElementById("valor");
 
-// Invest inputs
+// Invest inputs (base)
 const investFieldsEl = document.getElementById("investFields");
+const investTotalEl = document.getElementById("investTotal");
+
+// Invest kind + subfields (NOVO)
+const investKindEl = document.getElementById("investKind"); // "stock" | "cdb"
+const stockFieldsEl = document.getElementById("stockFields");
+const stockMarketEl = document.getElementById("stockMarket"); // "BR" | "US"
+const cdbFieldsEl = document.getElementById("cdbFields");
+const cdbPctCdiEl = document.getElementById("cdbPctCdi");
+
+// Stock fields (mantém ids antigos pra não quebrar)
 const tickerEl = document.getElementById("ticker");
 const qtdAcoesEl = document.getElementById("qtdAcoes");
 const precoAcaoEl = document.getElementById("precoAcao");
-const investTotalEl = document.getElementById("investTotal");
 
 // Botões
 const btnReceita = document.getElementById("btnReceita");
@@ -169,17 +178,48 @@ function showAddForm(show) {
   addFormEl.style.display = show ? "block" : "none";
 }
 
-function getInvestTotal() {
+/**
+ * Total automático apenas para AÇÕES (stock)
+ */
+function getInvestTotalStock() {
   const qtd = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
   return (Number.isFinite(qtd) ? qtd : 0) * (Number.isFinite(preco) ? preco : 0);
 }
 
-function updateInvestTotalUI() {
-  const total = getInvestTotal();
+function updateInvestTotalUIStock() {
+  const total = getInvestTotalStock();
   if (investTotalEl) investTotalEl.textContent = brl(total);
+  // opcional: preencher o campo "valor" com total para manter compatibilidade
   if (valorEl) valorEl.value = total ? String(total.toFixed(2)) : "";
 }
+
+function updateInvestTotalUICdb() {
+  // Para CDB, o "valor" é o input #valor
+  const total = Number(valorEl?.value || 0);
+  if (investTotalEl) investTotalEl.textContent = brl(total);
+}
+
+function applyInvestKindUI() {
+  const kind = investKindEl?.value || "stock";
+
+  if (stockFieldsEl) stockFieldsEl.hidden = kind !== "stock";
+  if (cdbFieldsEl) cdbFieldsEl.hidden = kind !== "cdb";
+
+  if (kind === "stock") updateInvestTotalUIStock();
+  else updateInvestTotalUICdb();
+}
+
+if (investKindEl) investKindEl.addEventListener("change", applyInvestKindUI);
+if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", () => {
+  if ((investKindEl?.value || "stock") === "stock") updateInvestTotalUIStock();
+});
+if (precoAcaoEl) precoAcaoEl.addEventListener("input", () => {
+  if ((investKindEl?.value || "stock") === "stock") updateInvestTotalUIStock();
+});
+if (valorEl) valorEl.addEventListener("input", () => {
+  if ((investKindEl?.value || "stock") === "cdb") updateInvestTotalUICdb();
+});
 
 /**
  * Toggle:
@@ -191,7 +231,6 @@ function toggleAddType(tipo, activeBtn) {
   const isSameType = currentAddType === tipo;
 
   if (isOpen && isSameType) {
-    // fechar
     currentAddType = null;
     setActiveTypeButton(null);
     showAddForm(false);
@@ -199,18 +238,17 @@ function toggleAddType(tipo, activeBtn) {
     return;
   }
 
-  // abrir/trocar
   currentAddType = tipo;
   setActiveTypeButton(activeBtn);
   showAddForm(true);
 
   const isInvest = tipo === "investimento";
   if (investFieldsEl) investFieldsEl.hidden = !isInvest;
-  if (isInvest) updateInvestTotalUI();
-}
 
-if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", updateInvestTotalUI);
-if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
+  if (isInvest) {
+    applyInvestKindUI();
+  }
+}
 
 /**
  * ==========
@@ -218,7 +256,7 @@ if (precoAcaoEl) precoAcaoEl.addEventListener("input", updateInvestTotalUI);
  * ==========
  */
 const quoteCache = new Map(); // symbol => { price, updatedAt }
-const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h (pra refletir melhor durante o dia)
+const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
 async function fetchQuoteForSymbol(symbol) {
   const url = `${AV_BASE}?function=${encodeURIComponent(AV_FUNCTION)}&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(ALPHAVANTAGE_KEY)}`;
@@ -270,7 +308,7 @@ async function fetchAlphaVantageQuoteSmart(rawTicker, { force = false } = {}) {
 async function updateQuotesForInvestments(rows, { force = false } = {}) {
   const tickers = Array.from(new Set(
     rows
-      .filter(r => r.tipo === "investimento")
+      .filter(r => r.tipo === "investimento" && r.investKind !== "cdb")
       .map(r => normalizeTicker(r.ticker))
       .filter(Boolean)
   ));
@@ -291,7 +329,9 @@ function getCachedQuoteForTicker(rawTicker) {
 }
 
 function getCurrentValueForInvestmentRow(row) {
+  // Apenas para AÇÃO (stock)
   if (row.tipo !== "investimento") return null;
+  if (row.investKind === "cdb") return null;
 
   const qtd = Number(row.qtdAcoes || 0);
   if (!Number.isFinite(qtd) || qtd <= 0) return null;
@@ -365,13 +405,24 @@ function computeFilteredRows(allRows) {
   });
 }
 
-function sumInvestmentsCurrentValue(rows) {
+function sumInvestmentsValue(rows) {
+  // Regra:
+  // - stock: usa VALOR ATUAL se tiver cotação, senão usa valor investido (fallback)
+  // - cdb: usa valor investido (principal), pois não há cálculo de rentabilidade aqui ainda
   let total = 0;
+
   rows.forEach(r => {
     if (r.tipo !== "investimento") return;
+
+    if (r.investKind === "cdb") {
+      total += Number(r.valor || 0);
+      return;
+    }
+
     const atual = getCurrentValueForInvestmentRow(r);
-    if (atual != null) total += atual;
+    total += (atual != null ? atual : Number(r.valor || 0));
   });
+
   return total;
 }
 
@@ -432,7 +483,7 @@ function renderCharts(filteredRows) {
     if (r.tipo === "despesa") despesas += r.valor;
   });
 
-  const investimentosAtual = sumInvestmentsCurrentValue(filteredRows);
+  const investimentosTotal = sumInvestmentsValue(filteredRows);
 
   destroyCharts();
 
@@ -452,9 +503,9 @@ function renderCharts(filteredRows) {
   pieChart = new Chart(pieCtx, {
     type: "doughnut",
     data: {
-      labels: ["Receita", "Despesa", "Investimentos (atual)"],
+      labels: ["Receita", "Despesa", "Investimentos"],
       datasets: [{
-        data: [receitas, despesas, investimentosAtual],
+        data: [receitas, despesas, investimentosTotal],
         backgroundColor: [
           "rgba(109,124,255,0.9)",
           "rgba(245,158,11,0.9)",
@@ -477,7 +528,7 @@ function renderTableAndKpis(filteredRows) {
   if (!tabela) return;
 
   let receitas = 0, despesas = 0;
-  const investimentosAtual = sumInvestmentsCurrentValue(filteredRows);
+  const investimentosTotal = sumInvestmentsValue(filteredRows);
 
   tabela.innerHTML = "";
 
@@ -492,11 +543,13 @@ function renderTableAndKpis(filteredRows) {
     let plPct = null;
     let quoteLine = `<span class="muted">Cotação: --</span>`;
 
-    if (r.tipo === "investimento" && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
+    const isStockInvestment = r.tipo === "investimento" && r.investKind !== "cdb";
+
+    if (isStockInvestment && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
       const q = getCachedQuoteForTicker(r.ticker);
       if (q?.price) {
         valorAtual = r.qtdAcoes * q.price;
-        pl = valorAtual - r.valor;
+        pl = valorAtual - Number(r.valor || 0); // custo
         plPct = r.valor > 0 ? (pl / r.valor) : 0;
         quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
       }
@@ -504,20 +557,28 @@ function renderTableAndKpis(filteredRows) {
 
     const desc =
       r.tipo === "investimento"
-        ? `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)}`
+        ? (r.investKind === "cdb"
+            ? `${r.descricao ?? ""} — CDB ${Number(r.cdbPctCdi || 0)}% do CDI`
+            : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${brl(r.precoAcao ?? 0)} ${r.market === "US" ? "(USD)" : "(BRL)"}`
+          )
         : (r.descricao ?? "");
 
     const valorCell = r.tipo === "investimento"
-      ? `
-        <div class="val-col">
-          <div class="val-main">Investido: ${brl(r.valor)}</div>
-          <div class="val-sub">${quoteLine}</div>
-          <div class="val-sub">
-            ${valorAtual == null ? `<span class="muted">Atual: carregando...</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
-            ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
-          </div>
-        </div>
-      `
+      ? (r.investKind === "cdb"
+          ? `<div class="val-col">
+              <div class="val-main">${brl(r.valor)}</div>
+              <div class="val-sub"><span class="muted">CDB</span><span class="muted">${Number(r.cdbPctCdi || 0)}% CDI</span></div>
+            </div>`
+          : `
+            <div class="val-col">
+              <div class="val-main">Investido: ${brl(r.valor)}</div>
+              <div class="val-sub">${quoteLine}</div>
+              <div class="val-sub">
+                ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
+                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)} (${pct(plPct)})</span>`}
+              </div>
+            </div>
+          `)
       : brl(r.valor);
 
     tr.innerHTML = `
@@ -550,7 +611,7 @@ function renderTableAndKpis(filteredRows) {
   if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
   if (receitasEl) receitasEl.innerText = brl(receitas);
   if (despesasEl) despesasEl.innerText = brl(despesas);
-  if (investimentosEl) investimentosEl.innerText = brl(investimentosAtual);
+  if (investimentosEl) investimentosEl.innerText = brl(investimentosTotal);
 }
 
 function renderAll(allRows) {
@@ -606,30 +667,59 @@ async function addCurrent() {
   if (!descricao || !currentAddType) return;
 
   if (currentAddType === "investimento") {
-    const ticker = normalizeTicker(tickerEl?.value || "");
-    const qtd = Number(qtdAcoesEl?.value || 0);
-    const preco = Number(precoAcaoEl?.value || 0);
-    const total = qtd * preco;
+    const kind = investKindEl?.value || "stock";
 
-    if (!Number.isFinite(qtd) || qtd <= 0) return;
-    if (!Number.isFinite(preco) || preco <= 0) return;
+    if (kind === "stock") {
+      const market = stockMarketEl?.value || "BR";
+      const ticker = normalizeTicker(tickerEl?.value || "");
+      const qtd = Number(qtdAcoesEl?.value || 0);
+      const preco = Number(precoAcaoEl?.value || 0);
+      const total = qtd * preco;
+
+      if (!Number.isFinite(qtd) || qtd <= 0) return;
+      if (!Number.isFinite(preco) || preco <= 0) return;
+
+      await addDoc(ref, {
+        descricao,
+        tipo: "investimento",
+        investKind: "stock",
+        market, // "BR" | "US"
+        ticker,
+        qtdAcoes: qtd,
+        precoAcao: preco,
+        valor: total, // custo investido
+        createdAt: serverTimestamp()
+      });
+
+      if (descricaoEl) descricaoEl.value = "";
+      if (tickerEl) tickerEl.value = "";
+      if (qtdAcoesEl) qtdAcoesEl.value = "";
+      if (precoAcaoEl) precoAcaoEl.value = "";
+      if (valorEl) valorEl.value = "";
+      updateInvestTotalUIStock();
+      return;
+    }
+
+    // CDB
+    const valor = Number(valorEl?.value || 0);
+    const pctCdi = Number(cdbPctCdiEl?.value || 0);
+
+    if (!Number.isFinite(valor) || valor <= 0) return;
+    if (!Number.isFinite(pctCdi) || pctCdi <= 0) return;
 
     await addDoc(ref, {
       descricao,
       tipo: "investimento",
-      ticker,
-      qtdAcoes: qtd,
-      precoAcao: preco,
-      valor: total,
+      investKind: "cdb",
+      valor, // principal
+      cdbPctCdi: pctCdi,
       createdAt: serverTimestamp()
     });
 
     if (descricaoEl) descricaoEl.value = "";
-    if (tickerEl) tickerEl.value = "";
-    if (qtdAcoesEl) qtdAcoesEl.value = "";
-    if (precoAcaoEl) precoAcaoEl.value = "";
     if (valorEl) valorEl.value = "";
-    updateInvestTotalUI();
+    if (cdbPctCdiEl) cdbPctCdiEl.value = "";
+    updateInvestTotalUICdb();
     return;
   }
 
@@ -750,6 +840,9 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       descricao: data.descricao,
       tipo: data.tipo,
       valor: Number(data.valor || 0),
+      investKind: data.investKind,         // "stock" | "cdb"
+      market: data.market,                 // "BR" | "US"
+      cdbPctCdi: Number(data.cdbPctCdi || 0),
       ticker: data.ticker,
       qtdAcoes: Number(data.qtdAcoes || 0),
       precoAcao: Number(data.precoAcao || 0),
