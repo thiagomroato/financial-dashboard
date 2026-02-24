@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=40"/>
+  <link rel="stylesheet" href="style.css?v=41"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -22,7 +22,6 @@
       </div>
 
       <div class="sidebar-section">
-        <!-- BOTÕES DE TIPO (sempre visíveis) -->
         <div class="section-title">Adicionar lançamento</div>
 
         <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
@@ -40,7 +39,7 @@
           </button>
         </div>
 
-        <!-- FORM (fica oculto até escolher tipo; o JS controla via #addForm) -->
+        <!-- FORM (toggle via JS) -->
         <div id="addForm" style="display:none; margin-top: 14px;">
           <label class="field">
             <span class="field-label">Descrição</span>
@@ -55,7 +54,7 @@
 
           <!-- Campos de investimento -->
           <div class="invest-fields" id="investFields" hidden>
-            <!-- SUBTIPO (dropdown custom no estilo Ano/Mês) -->
+            <!-- SUBTIPO (dropdown custom igual Ano/Mês) -->
             <div class="field">
               <span class="field-label">Tipo de investimento</span>
 
@@ -71,7 +70,7 @@
 
             <!-- AÇÃO -->
             <div id="stockFields">
-              <!-- MERCADO (dropdown custom no estilo Ano/Mês) -->
+              <!-- MERCADO (dropdown custom igual Ano/Mês) -->
               <div class="field">
                 <span class="field-label">Mercado</span>
 
@@ -108,7 +107,7 @@
               </div>
 
               <p class="sidebar-hint" style="margin-top:8px">
-                Para ações, o <b>Valor</b> pode ser preenchido automaticamente com <code>quantidade × preço</code>.
+                Para ações, o <b>Valor</b> é preenchido automaticamente com <code>quantidade × preço</code>.
               </p>
             </div>
 
@@ -293,7 +292,6 @@
   <script type="module" src="app.js"></script>
 
   <script>
-    // Fechar modal (visual) sem mexer na lógica do app.js
     const modal = document.getElementById("modal");
     const closeModal = document.getElementById("closeModal");
     if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
