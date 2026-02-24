@@ -45,6 +45,26 @@ async function fetchAlphaVantageQuote(symbol, apiKey) {
   return price;
 }
 
+async function fetchAlphaVantageUsdBrl(apiKey) {
+  const url =
+    `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=BRL&apikey=${encodeURIComponent(apiKey)}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`AlphaVantage FX HTTP ${res.status}`);
+  const data = await res.json();
+
+  if (data?.Note) throw new Error(`AlphaVantage rate limit: ${data.Note}`);
+  if (data?.Information) throw new Error(`AlphaVantage: ${data.Information}`);
+  if (data?.["Error Message"]) throw new Error(`AlphaVantage: ${data["Error Message"]}`);
+
+  const fx = data?.["Realtime Currency Exchange Rate"];
+  // Campo vem como string tipo "5.0123"
+  const rate = Number(fx?.["5. Exchange Rate"]);
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error("Invalid USD/BRL exchange rate");
+
+  return rate;
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -56,7 +76,41 @@ async function main() {
   admin.initializeApp({ credential: admin.credential.cert(sa) });
   const db = admin.firestore();
 
-  // Descobrir tickers em transactions
+  // Alpha Vantage é bem restrito no free tier; evita spammar
+  const DELAY_MS = 15000; // 15s entre requests
+
+  // 0) Atualiza USD/BRL primeiro (doc quotes/USD-BRL)
+  try {
+    const usdBrl = await fetchAlphaVantageUsdBrl(apiKey);
+
+    await db.collection("quotes").doc("USD-BRL").set(
+      {
+        symbol: "USD-BRL",
+        price: usdBrl,
+        source: "alphavantage",
+        error: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    console.log(`OK USD-BRL = ${usdBrl}`);
+  } catch (e) {
+    console.log(`FAIL USD-BRL: ${e?.message || e}`);
+    await db.collection("quotes").doc("USD-BRL").set(
+      {
+        symbol: "USD-BRL",
+        source: "alphavantage",
+        error: e?.message || String(e),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+  } finally {
+    await sleep(DELAY_MS);
+  }
+
+  // 1) Descobrir tickers em transactions
   const snap = await db.collection("transactions").get();
   const tickers = new Set();
 
@@ -71,9 +125,7 @@ async function main() {
   const list = Array.from(tickers);
   console.log("Tickers found:", list);
 
-  // Alpha Vantage é bem restrito no free tier; evita spammar
-  const DELAY_MS = 15000; // 15s entre requests
-
+  // 2) Atualizar tickers
   for (const rawTicker of list) {
     const candidates = toQuoteDocIdCandidates(rawTicker);
     let saved = false;
