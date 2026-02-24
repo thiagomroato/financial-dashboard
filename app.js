@@ -26,7 +26,7 @@ const DAILY_QUOTE_MINUTE = 0;
 const DAILY_QUOTE_SECOND = 0;
 
 // throttle simples p/ não spammar AV
-const AV_DELAY_MS = 450;
+const AV_DELAY_MS = 2000;
 
 /**
  * ==========
