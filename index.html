@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financial Dashboard</title>
 
-  <link rel="stylesheet" href="style.css?v=44"/>
+  <link rel="stylesheet" href="style.css?v=40"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -21,11 +21,11 @@
         </div>
       </div>
 
-      <!-- Tipo (sempre visível) -->
       <div class="sidebar-section">
-        <div class="section-title">Tipo de lançamento</div>
+        <!-- BOTÕES DE TIPO (sempre visíveis) -->
+        <div class="section-title">Adicionar lançamento</div>
 
-        <div class="btn-group" role="group" aria-label="Escolher tipo do lançamento">
+        <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
           <button id="btnReceita" class="btn receita" type="button">
             <span class="btn-dot" aria-hidden="true"></span>
             Receita
@@ -40,57 +40,84 @@
           </button>
         </div>
 
-        <p class="sidebar-hint">
-          Selecione um tipo para liberar o formulário.
-        </p>
-      </div>
-
-      <!-- ADD FORM (fica oculto até selecionar tipo) -->
-      <div class="sidebar-section" id="addForm" style="display:none;">
-        <div class="section-title">Adicionar lançamento</div>
-
-        <label class="field">
-          <span class="field-label">Descrição</span>
-          <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
-        </label>
-
-        <label class="field" id="valorField">
-          <span class="field-label">Valor</span>
-          <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal" step="0.01">
-        </label>
-
-        <!-- Investimento (ações) -->
-        <div class="invest-fields" id="investFields" hidden>
+        <!-- FORM (fica oculto até escolher tipo; o JS controla via #addForm) -->
+        <div id="addForm" style="display:none; margin-top: 14px;">
           <label class="field">
-            <span class="field-label">Ticker (EUA: AAPL / Brasil: PETR4 ou PETR4.SA)</span>
-            <input type="text" id="ticker" placeholder="Ex: PETR4, PETR4.SA, AAPL">
+            <span class="field-label">Descrição</span>
+            <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
           </label>
 
-          <div class="field-row">
+          <!-- valor padrão (Receita/Despesa) e também principal do CDB -->
+          <label class="field" id="valorField">
+            <span class="field-label">Valor</span>
+            <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal" step="0.01">
+          </label>
+
+          <!-- Campos de investimento -->
+          <div class="invest-fields" id="investFields" hidden>
+            <!-- SUBTIPO -->
             <label class="field">
-              <span class="field-label">Quantidade</span>
-              <input type="number" id="qtdAcoes" placeholder="Ex: 10" inputmode="numeric" step="1" min="0">
+              <span class="field-label">Tipo de investimento</span>
+              <select id="investKind">
+                <option value="stock">Ação</option>
+                <option value="cdb">CDB</option>
+              </select>
             </label>
 
-            <label class="field">
-              <span class="field-label">Preço/ação</span>
-              <input type="number" id="precoAcao" placeholder="Ex: 32.50" inputmode="decimal" step="0.01" min="0">
-            </label>
+            <!-- AÇÃO -->
+            <div id="stockFields">
+              <label class="field">
+                <span class="field-label">Mercado</span>
+                <select id="stockMarket">
+                  <option value="BR">Brasil (BRL)</option>
+                  <option value="US">EUA (USD)</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Ticker</span>
+                <input type="text" id="ticker" placeholder="Ex: ITSA4.SA (BR) / AAPL (US)">
+              </label>
+
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">Quantidade</span>
+                  <input type="number" id="qtdAcoes" placeholder="Ex: 2" inputmode="numeric" step="1" min="0">
+                </label>
+
+                <label class="field">
+                  <span class="field-label">Preço/unidade</span>
+                  <input type="number" id="precoAcao" placeholder="Ex: 15.00" inputmode="decimal" step="0.01" min="0">
+                </label>
+              </div>
+
+              <div class="total-preview">
+                <span>Total</span>
+                <strong id="investTotal">R$ 0,00</strong>
+              </div>
+
+              <p class="sidebar-hint" style="margin-top:8px">
+                Para ações, o <b>Valor</b> pode ser preenchido automaticamente com <code>quantidade × preço</code>.
+              </p>
+            </div>
+
+            <!-- CDB -->
+            <div id="cdbFields" hidden>
+              <label class="field">
+                <span class="field-label">% do CDI</span>
+                <input type="number" id="cdbPctCdi" placeholder="Ex: 110" inputmode="decimal" step="0.01" min="0">
+              </label>
+
+              <p class="sidebar-hint" style="margin-top:8px">
+                Para CDB, informe o <b>Valor</b> (principal) e o <b>%CDI</b>.
+              </p>
+            </div>
           </div>
 
-          <div class="total-preview">
-            <span>Total</span>
-            <strong id="investTotal">R$ 0,00</strong>
-          </div>
-
-          <p class="sidebar-hint" style="margin-top:8px">
-            O <b>Valor</b> será preenchido automaticamente com <code>quantidade × preço/ação</code>.
-          </p>
+          <button id="btnAdd" class="btn btn-primary" type="button" style="width: 100%; margin-top: 10px;">
+            Adicionar
+          </button>
         </div>
-
-        <button id="btnAdd" class="btn btn-primary" type="button" style="margin-top:10px;">
-          ADICIONAR LANÇAMENTO
-        </button>
       </div>
 
       <!-- PERÍODO -->
@@ -255,6 +282,7 @@
   <script type="module" src="app.js"></script>
 
   <script>
+    // Fechar modal (visual) sem mexer na lógica do app.js
     const modal = document.getElementById("modal");
     const closeModal = document.getElementById("closeModal");
     if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
