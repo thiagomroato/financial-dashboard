@@ -55,24 +55,35 @@
 
           <!-- Campos de investimento -->
           <div class="invest-fields" id="investFields" hidden>
-            <!-- SUBTIPO -->
-            <label class="field">
+            <!-- SUBTIPO (dropdown custom no estilo Ano/Mês) -->
+            <div class="field">
               <span class="field-label">Tipo de investimento</span>
-              <select id="investKind">
-                <option value="stock">Ação</option>
-                <option value="cdb">CDB</option>
-              </select>
-            </label>
+
+              <div class="dd dd--blue" id="investKindDD">
+                <button class="dd-btn" id="investKindBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="dd-dot" aria-hidden="true"></span>
+                  <span class="dd-value" id="investKindValue">Ação</span>
+                  <span class="dd-caret" aria-hidden="true"></span>
+                </button>
+                <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar tipo de investimento" id="investKindMenu"></div>
+              </div>
+            </div>
 
             <!-- AÇÃO -->
             <div id="stockFields">
-              <label class="field">
+              <!-- MERCADO (dropdown custom no estilo Ano/Mês) -->
+              <div class="field">
                 <span class="field-label">Mercado</span>
-                <select id="stockMarket">
-                  <option value="BR">Brasil (BRL)</option>
-                  <option value="US">EUA (USD)</option>
-                </select>
-              </label>
+
+                <div class="dd dd--purple" id="stockMarketDD">
+                  <button class="dd-btn" id="stockMarketBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="dd-dot" aria-hidden="true"></span>
+                    <span class="dd-value" id="stockMarketValue">Brasil (BRL)</span>
+                    <span class="dd-caret" aria-hidden="true"></span>
+                  </button>
+                  <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mercado" id="stockMarketMenu"></div>
+                </div>
+              </div>
 
               <label class="field">
                 <span class="field-label">Ticker</span>
