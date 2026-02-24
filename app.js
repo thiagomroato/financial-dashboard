@@ -169,9 +169,9 @@ let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
 let currentAddType = null;
 
-// Invest state (subtipo e mercado)
-let investKind = "stock";  // "stock" | "cdb"
-let stockMarket = "BR";    // "BR" | "US"
+// Invest state
+let investKind = "stock"; // "stock" | "cdb"
+let stockMarket = "BR";   // "BR" | "US"
 
 /**
  * ==========
@@ -190,6 +190,9 @@ function showAddForm(show) {
   addFormEl.style.display = show ? "block" : "none";
 }
 
+/**
+ * Total automático (AÇÕES)
+ */
 function getInvestTotalStock() {
   const qtd = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
@@ -218,7 +221,7 @@ function applyInvestKindUI() {
 
 /**
  * ==========
- * Dropdown custom (Ano/Mês + Reuso)
+ * Dropdown custom (Ano/Mês + Invest)
  * ==========
  */
 function setDDOpen(dd, open) {
@@ -305,9 +308,9 @@ function setupInvestDropdownsOnce() {
 }
 
 /**
- * Toggle:
- * - Clique no tipo => abre form e seleciona tipo
- * - Clique no MESMO tipo novamente => fecha form e limpa seleção
+ * Toggle tipo:
+ * - Clicar abre
+ * - Clicar no mesmo fecha
  */
 function toggleAddType(tipo, activeBtn) {
   const isOpen = addFormEl ? addFormEl.style.display !== "none" : false;
@@ -936,6 +939,9 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   );
 
   if (yearValue) yearValue.textContent = String(selectedYear);
+
+  // IMPORTANTE: inicializa os dropdowns de investimento (uma vez)
+  setupInvestDropdownsOnce();
 
   renderAll(allRows);
   await ensureQuotesThenRerender(allRows);
