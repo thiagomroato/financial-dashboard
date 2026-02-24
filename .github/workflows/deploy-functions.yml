@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "functions/**"
+      - "firebase.json"
       - ".github/workflows/deploy-functions.yml"
       - ".firebaserc"
 
@@ -34,4 +35,4 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-sa.json
         run: |
-          firebase deploy --only functions
+          firebase deploy --only functions --project $(node -p "require('./.firebaserc').projects.default")
