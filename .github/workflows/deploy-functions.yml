@@ -42,8 +42,8 @@ jobs:
           cd functions
           npm install
 
-      - name: Deploy Functions
+        - name: Deploy Functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-sa.json
         run: |
-          firebase deploy --only functions --project $(node -p "require('./.firebaserc').projects.default")
+          firebase deploy --only functions --project financial-dashboard-a2b16
