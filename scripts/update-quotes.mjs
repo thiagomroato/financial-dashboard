@@ -1,67 +1,115 @@
 import admin from "firebase-admin";
 
-function env(name) {
+function mustEnv(name) {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing env: ${name}`);
+  if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
 
-function parseSymbols() {
-  // Você pode trocar para ler do Firestore depois; por enquanto vem de env
-  const raw = (process.env.QUOTE_SYMBOLS || "AAPL,MSFT,ITSA4.SA").trim();
-  return raw.split(",").map(s => s.trim()).filter(Boolean);
+function normalizeTicker(raw) {
+  return String(raw || "").trim().toUpperCase();
 }
 
-async function fetchYahoo(symbol) {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; github-actions/1.0)" }
-  });
-  if (!res.ok) throw new Error(`Yahoo HTTP ${res.status}`);
-  const data = await res.json();
-  const r = data?.quoteResponse?.result?.[0];
-  const price = Number(r?.regularMarketPrice);
-  const currency = r?.currency ?? null;
-  const name = r?.shortName ?? r?.longName ?? null;
+function isBrazilLikeTicker(ticker) {
+  return /[0-9]$/.test(ticker) || ticker.endsWith(".SA");
+}
 
+function toQuoteDocIdCandidates(rawTicker) {
+  const t = normalizeTicker(rawTicker);
+  if (!t) return [];
+
+  if (isBrazilLikeTicker(t)) {
+    const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
+    return Array.from(new Set([withSA, t]));
+  }
+
+  return Array.from(new Set([t, `${t}.SA`]));
+}
+
+async function fetchAlphaVantageQuote(symbol, apiKey) {
+  const url =
+    `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(apiKey)}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`AlphaVantage HTTP ${res.status}`);
+  const data = await res.json();
+
+  if (data?.Note) throw new Error(`AlphaVantage rate limit: ${data.Note}`);
+  if (data?.Information) throw new Error(`AlphaVantage: ${data.Information}`);
+  if (data?.["Error Message"]) throw new Error(`AlphaVantage: ${data["Error Message"]}`);
+
+  const quote = data?.["Global Quote"];
+  const price = Number(quote?.["05. price"]);
   if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid price");
-  return { price, currency, name };
+
+  return price;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 async function main() {
-  // Autenticação via Service Account JSON (secret)
-  const saJson = JSON.parse(env("FIREBASE_SERVICE_ACCOUNT_JSON"));
-  admin.initializeApp({ credential: admin.credential.cert(saJson) });
+  const sa = JSON.parse(mustEnv("FIREBASE_SERVICE_ACCOUNT_JSON"));
+  const apiKey = mustEnv("ALPHAVANTAGE_KEY");
 
+  admin.initializeApp({ credential: admin.credential.cert(sa) });
   const db = admin.firestore();
-  const symbols = parseSymbols();
-  const now = admin.firestore.FieldValue.serverTimestamp();
 
-  console.log("Updating symbols:", symbols);
+  // Descobrir tickers em transactions
+  const snap = await db.collection("transactions").get();
+  const tickers = new Set();
 
-  for (const symbol of symbols) {
-    try {
-      const q = await fetchYahoo(symbol);
-      await db.collection("quotes").doc(symbol).set(
+  snap.forEach((d) => {
+    const x = d.data();
+    if (x?.tipo !== "investimento") return;
+    if (x?.investKind === "cdb") return;
+    const t = normalizeTicker(x?.ticker);
+    if (t) tickers.add(t);
+  });
+
+  const list = Array.from(tickers);
+  console.log("Tickers found:", list);
+
+  // Alpha Vantage é bem restrito no free tier; evita spammar
+  const DELAY_MS = 15000; // 15s entre requests
+
+  for (const rawTicker of list) {
+    const candidates = toQuoteDocIdCandidates(rawTicker);
+    let saved = false;
+
+    for (const sym of candidates) {
+      try {
+        const price = await fetchAlphaVantageQuote(sym, apiKey);
+
+        await db.collection("quotes").doc(sym).set(
+          {
+            symbol: sym,
+            price,
+            source: "alphavantage",
+            error: admin.firestore.FieldValue.delete(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        console.log(`OK ${rawTicker} -> ${sym} = ${price}`);
+        saved = true;
+        break;
+      } catch (e) {
+        console.log(`FAIL ${rawTicker} -> ${sym}: ${e?.message || e}`);
+      } finally {
+        await sleep(DELAY_MS);
+      }
+    }
+
+    if (!saved) {
+      await db.collection("quotes").doc(rawTicker).set(
         {
-          symbol,
-          price: q.price,
-          currency: q.currency,
-          name: q.name,
-          updatedAt: now,
-          source: "yahoo"
-        },
-        { merge: true }
-      );
-      console.log(`OK ${symbol} = ${q.price}`);
-    } catch (e) {
-      console.error(`FAIL ${symbol}`, e?.message || e);
-      await db.collection("quotes").doc(symbol).set(
-        {
-          symbol,
-          error: e?.message || String(e),
-          updatedAt: now,
-          source: "yahoo"
+          symbol: rawTicker,
+          source: "alphavantage",
+          error: "Could not fetch any candidate symbol",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
         },
         { merge: true }
       );
