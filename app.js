@@ -1059,8 +1059,8 @@ window.refreshApp = async function refreshApp() {
   }
 };
 
-// ===== Modal Edit (robusto): registra handlers após DOM pronto =====
-document.addEventListener("DOMContentLoaded", () => {
+/// ===== Modal Edit: registra handlers SEM depender de DOMContentLoaded =====
+(function wireEditModal() {
   const modal = document.getElementById("modal");
   const closeModal = document.getElementById("closeModal");
   const saveEdit = document.getElementById("saveEdit");
@@ -1068,8 +1068,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const editDescricao = document.getElementById("editDescricao");
   const editValor = document.getElementById("editValor");
 
-  // Log para confirmar que achou os elementos
-  console.log("[edit] elements", {
+  console.log("[edit] wire", {
     modal: !!modal,
     closeModal: !!closeModal,
     saveEdit: !!saveEdit,
@@ -1077,46 +1076,45 @@ document.addEventListener("DOMContentLoaded", () => {
     editValor: !!editValor
   });
 
+  if (!modal || !saveEdit || !editDescricao || !editValor) {
+    console.warn("[edit] modal elements not found; edit save disabled");
+    return;
+  }
+
   function closeEditModal() {
-    if (modal) modal.style.display = "none";
+    modal.style.display = "none";
     editId = null;
   }
 
-  if (closeModal) {
-    closeModal.addEventListener("click", () => closeEditModal());
-  }
+  if (closeModal) closeModal.addEventListener("click", closeEditModal);
 
-  if (saveEdit) {
-    saveEdit.addEventListener("click", async () => {
-      console.log("[edit] click save", { editId });
+  saveEdit.addEventListener("click", async () => {
+    console.log("[edit] click save", { editId });
 
-      try {
-        if (!editId) {
-          alert("Nenhum lançamento selecionado para edição (editId vazio).");
-          return;
-        }
+    if (!editId) {
+      alert("Nenhum lançamento selecionado para edição.");
+      return;
+    }
 
-        const descricao = (editDescricao?.value || "").trim();
-        const valor = Number(editValor?.value);
+    const descricao = (editDescricao.value || "").trim();
+    const valor = Number(editValor.value);
 
-        if (!descricao) {
-          alert("Descrição é obrigatória.");
-          return;
-        }
-        if (!Number.isFinite(valor)) {
-          alert("Valor inválido.");
-          return;
-        }
+    if (!descricao) {
+      alert("Descrição é obrigatória.");
+      return;
+    }
+    if (!Number.isFinite(valor)) {
+      alert("Valor inválido.");
+      return;
+    }
 
-        const refDoc = doc(db, "transactions", editId);
-        await updateDoc(refDoc, { descricao, valor });
-
-        console.log("[edit] saved", { editId, descricao, valor });
-        closeEditModal();
-      } catch (e) {
-        console.error("[edit] save failed", e);
-        alert(`Falha ao salvar: ${e?.message || e}`);
-      }
-    });
-  }
-});
+    try {
+      await updateDoc(doc(db, "transactions", editId), { descricao, valor });
+      console.log("[edit] saved", { editId, descricao, valor });
+      closeEditModal();
+    } catch (e) {
+      console.error("[edit] save failed", e);
+      alert(`Falha ao salvar: ${e?.message || e}`);
+    }
+  });
+})();
