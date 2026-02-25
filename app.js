@@ -39,6 +39,12 @@ const FX_USD_BRL_DOC_ID = "USD-BRL";
 const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const fmtUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
+function fx(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x <= 0) return "--";
+  return x.toFixed(4);
+}
+
 function toDateMaybe(ts) {
   if (!ts) return null;
   if (ts instanceof Date) return ts;
@@ -88,9 +94,9 @@ function toQuoteDocIdCandidates(rawTicker) {
 
 function usdToBrl(usdValue, usdBrl) {
   const u = Number(usdValue);
-  const fx = Number(usdBrl);
-  if (!Number.isFinite(u) || !Number.isFinite(fx) || fx <= 0) return null;
-  return u * fx;
+  const fxRate = Number(usdBrl);
+  if (!Number.isFinite(u) || !Number.isFinite(fxRate) || fxRate <= 0) return null;
+  return u * fxRate;
 }
 
 const monthNames = [
@@ -218,8 +224,8 @@ function getInvestTotalStock() {
 
   if (stockMarket !== "US") return raw;
 
-  const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-  const converted = usdToBrl(raw, fx);
+  const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+  const converted = usdToBrl(raw, fxRate);
   return converted ?? 0;
 }
 
@@ -467,9 +473,9 @@ function getCurrentValueForInvestmentRow(row) {
   }
 
   // US: quote em USD -> converte para BRL com USD/BRL atual
-  const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+  const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
   const currentUsd = qtd * q.price;
-  const currentBrl = usdToBrl(currentUsd, fx);
+  const currentBrl = usdToBrl(currentUsd, fxRate);
   return currentBrl;
 }
 
@@ -677,12 +683,14 @@ function renderTableAndKpis(filteredRows) {
         // valorAtual sempre em BRL
         valorAtual = getCurrentValueForInvestmentRow(r);
 
-        pl = (valorAtual == null ? null : (valorAtual - Number(r.valor || 0)));
-        plPct = (pl != null && r.valor > 0) ? (pl / r.valor) : null;
+        // P/L e % com base no investido em REAL (r.valor)
+        const investedBRL = Number(r.valor || 0);
+        pl = (valorAtual == null ? null : (valorAtual - investedBRL));
+        plPct = (pl != null && investedBRL > 0) ? (pl / investedBRL) : null;
 
         if (r.market === "US") {
-          const fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-          quoteLine = `<span>Cotação (${q.symbol}): ${usd(q.price)} ${fx ? `| USD/BRL: ${fx.toFixed(4)}` : ""}</span>`;
+          const fxNow = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+          quoteLine = `<span>Cotação (${normalizeTicker(r.ticker)}): ${usd(q.price)} | USD/BRL: ${fx(fxNow)}</span>`;
         } else {
           quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
         }
@@ -697,12 +705,6 @@ function renderTableAndKpis(filteredRows) {
           )
         : (r.descricao ?? "");
 
-    // Linha extra de "investido" para US
-    const investedExtraUS =
-      (r.tipo === "investimento" && r.investKind !== "cdb" && r.market === "US" && Number.isFinite(r.valorUSD) && r.valorUSD > 0)
-        ? `<div class="val-sub"><span class="muted">(${usd(r.valorUSD)} @ câmbio ${Number(r.fxUSDBRL || 0).toFixed(4)})</span></div>`
-        : "";
-
     const valorCell = r.tipo === "investimento"
       ? (r.investKind === "cdb"
           ? `<div class="val-col">
@@ -711,12 +713,19 @@ function renderTableAndKpis(filteredRows) {
             </div>`
           : `
             <div class="val-col">
-              <div class="val-main">Investido: ${brl(r.valor)}</div>
-              ${investedExtraUS}
+              <div class="val-main">
+                Investido: ${
+                  r.market === "US" && Number.isFinite(r.valorUSD) && r.valorUSD > 0
+                    ? usd(r.valorUSD)
+                    : brl(r.valor)
+                }
+              </div>
+
               <div class="val-sub">${quoteLine}</div>
+
               <div class="val-sub">
                 ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
-                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)}${plPct == null ? "" : ` (${pct(plPct)})`}</span>`}
+                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}"> P/L: ${brl(pl)}${plPct == null ? "" : ` (${pct(plPct)})`}</span>`}
               </div>
             </div>
           `)
@@ -789,22 +798,22 @@ async function addCurrent() {
 
       if (market === "US") {
         // garante que temos USD/BRL no cache (se não tiver, tenta buscar do Firestore)
-        let fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-        if (!fx) {
+        let fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+        if (!fxRate) {
           await ensureUsdBrlQuote({ force: true });
-          fx = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+          fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
         }
 
-        if (!Number.isFinite(fx) || fx <= 0) {
+        if (!Number.isFinite(fxRate) || fxRate <= 0) {
           alert("Não foi possível obter a cotação USD/BRL. Rode o cron (Update Quotes) e tente novamente.");
           return;
         }
 
-        fxUSDBRL = fx;
-        valorUSD = qtd * preco;      // USD
-        totalBRL = valorUSD * fx;    // BRL
+        fxUSDBRL = fxRate;
+        valorUSD = qtd * preco;       // USD
+        totalBRL = valorUSD * fxRate; // BRL
       } else {
-        totalBRL = qtd * preco;      // BRL
+        totalBRL = qtd * preco;       // BRL
       }
 
       await addDoc(ref, {
@@ -889,51 +898,58 @@ if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receit
 if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despesa", btnDespesa));
 if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
 if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
-// ===== Modal Edit: handlers (Salvar/Fechar) =====
-const closeModalBtn = document.getElementById("closeModal");
-const saveEditBtn = document.getElementById("saveEdit");
 
-function closeEditModal() {
-  if (modalEl) modalEl.style.display = "none";
-  editId = null;
-}
+/**
+ * ==========
+ * Modal Edit: (único handler) - evita duplicidade
+ * ==========
+ * Observação: edita "valor" em BRL (como você salva no Firestore).
+ * Para investimentos US, isso altera a base em BRL do lançamento.
+ */
+(function wireEditModal() {
+  const modal = document.getElementById("modal");
+  const closeModal = document.getElementById("closeModal");
+  const saveEdit = document.getElementById("saveEdit");
+  const editDescricao = document.getElementById("editDescricao");
+  const editValor = document.getElementById("editValor");
 
-if (closeModalBtn) {
-  closeModalBtn.addEventListener("click", () => closeEditModal());
-}
+  if (!modal || !saveEdit || !editDescricao || !editValor) return;
 
-if (saveEditBtn) {
-  saveEditBtn.addEventListener("click", async () => {
+  function closeEditModal() {
+    modal.style.display = "none";
+    editId = null;
+  }
+
+  if (closeModal) closeModal.addEventListener("click", closeEditModal);
+
+  saveEdit.addEventListener("click", async () => {
+    if (!editId) {
+      alert("Nenhum lançamento selecionado para edição.");
+      return;
+    }
+
+    const descricao = (editDescricao.value || "").trim();
+    const valor = Number(editValor.value);
+
+    if (!descricao) {
+      alert("Descrição é obrigatória.");
+      return;
+    }
+    if (!Number.isFinite(valor)) {
+      alert("Valor inválido.");
+      return;
+    }
+
     try {
-      if (!editId) {
-        alert("Nenhum lançamento selecionado para edição.");
-        return;
-      }
-
-      const descricao = (editDescricaoEl?.value || "").trim();
-      const valor = Number(editValorEl?.value || 0);
-
-      if (!descricao) {
-        alert("Descrição é obrigatória.");
-        return;
-      }
-      if (!Number.isFinite(valor)) {
-        alert("Valor inválido.");
-        return;
-      }
-
-      await updateDoc(doc(db, "transactions", editId), {
-        descricao,
-        valor
-      });
-
+      await updateDoc(doc(db, "transactions", editId), { descricao, valor });
       closeEditModal();
     } catch (e) {
       console.error(e);
-      alert("Não foi possível salvar a edição.");
+      alert(`Falha ao salvar: ${e?.message || e}`);
     }
   });
-}
+})();
+
 /**
  * ==========
  * Boot
@@ -984,7 +1000,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       id: docItem.id,
       descricao: data.descricao,
       tipo: data.tipo,
-      valor: Number(data.valor || 0),
+      valor: Number(data.valor || 0), // BRL (base p/ P&L)
       valorUSD: data.valorUSD == null ? null : Number(data.valorUSD || 0),
       fxUSDBRL: data.fxUSDBRL == null ? null : Number(data.fxUSDBRL || 0),
       investKind: data.investKind,
@@ -1043,6 +1059,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   renderAll(allRows);
   await ensureQuotesThenRerender(allRows);
 });
+
 // Exposto para o pull-to-refresh no mobile
 window.refreshApp = async function refreshApp() {
   // limpa cache de quotes (força recarregar USD-BRL e tickers)
@@ -1058,63 +1075,3 @@ window.refreshApp = async function refreshApp() {
     location.reload();
   }
 };
-
-/// ===== Modal Edit: registra handlers SEM depender de DOMContentLoaded =====
-(function wireEditModal() {
-  const modal = document.getElementById("modal");
-  const closeModal = document.getElementById("closeModal");
-  const saveEdit = document.getElementById("saveEdit");
-
-  const editDescricao = document.getElementById("editDescricao");
-  const editValor = document.getElementById("editValor");
-
-  console.log("[edit] wire", {
-    modal: !!modal,
-    closeModal: !!closeModal,
-    saveEdit: !!saveEdit,
-    editDescricao: !!editDescricao,
-    editValor: !!editValor
-  });
-
-  if (!modal || !saveEdit || !editDescricao || !editValor) {
-    console.warn("[edit] modal elements not found; edit save disabled");
-    return;
-  }
-
-  function closeEditModal() {
-    modal.style.display = "none";
-    editId = null;
-  }
-
-  if (closeModal) closeModal.addEventListener("click", closeEditModal);
-
-  saveEdit.addEventListener("click", async () => {
-    console.log("[edit] click save", { editId });
-
-    if (!editId) {
-      alert("Nenhum lançamento selecionado para edição.");
-      return;
-    }
-
-    const descricao = (editDescricao.value || "").trim();
-    const valor = Number(editValor.value);
-
-    if (!descricao) {
-      alert("Descrição é obrigatória.");
-      return;
-    }
-    if (!Number.isFinite(valor)) {
-      alert("Valor inválido.");
-      return;
-    }
-
-    try {
-      await updateDoc(doc(db, "transactions", editId), { descricao, valor });
-      console.log("[edit] saved", { editId, descricao, valor });
-      closeEditModal();
-    } catch (e) {
-      console.error("[edit] save failed", e);
-      alert(`Falha ao salvar: ${e?.message || e}`);
-    }
-  });
-})();
