@@ -696,3 +696,59 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   /* 2ª sidebar-section = Período (vai para antes) */
   .sidebar > .sidebar-section:nth-of-type(2){ order: 1 !important; }
 }
+/* ==========
+   Mobile: auto-ajuste de largura (sem “vazar”)
+   Cole NO FINAL do style.css
+   ==========
+*/
+@media (max-width: 900px){
+  /* garante que tudo respeite a largura da tela */
+  .app,
+  .sidebar,
+  .main,
+  .card,
+  .chart-card,
+  .table-card,
+  .table-wrap{
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* evita overflow horizontal acidental */
+  html, body{
+    overflow-x: hidden;
+  }
+
+  /* tabelas: manter scroll horizontal quando precisar (auto-ajuste) */
+  .table-wrap{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* remove "min-width" fixo para auto-ajuste;
+     a tabela vai ocupar o que couber e, se precisar, scrolla */
+  table{
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* o conteúdo das colunas pode quebrar linha ao invés de estourar */
+  tbody td,
+  thead th{
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  /* charts: evita estourar */
+  canvas{
+    max-width: 100% !important;
+  }
+
+  /* inputs: sempre cabem */
+  .sidebar input,
+  .modal-content input{
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px; /* evita zoom iOS */
+  }
+}
