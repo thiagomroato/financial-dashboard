@@ -999,3 +999,18 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   renderAll(allRows);
   await ensureQuotesThenRerender(allRows);
 });
+// Exposto para o pull-to-refresh no mobile
+window.refreshApp = async function refreshApp() {
+  // limpa cache de quotes (força recarregar USD-BRL e tickers)
+  try {
+    if (typeof quoteCache?.clear === "function") quoteCache.clear();
+  } catch {}
+
+  // re-render com quotes forçadas (sem precisar recarregar a página)
+  if (window.__ALL_ROWS__) {
+    await ensureQuotesThenRerender(window.__ALL_ROWS__);
+  } else {
+    // fallback: recarrega se ainda não tem snapshot
+    location.reload();
+  }
+};
