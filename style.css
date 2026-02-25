@@ -606,38 +606,70 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   table{ min-width: 620px; }
 }
 /* ==========
-   Mobile layout order (correto):
-   1) Adicionar lançamento (sidebar)
-   2) Período (sidebar)
-   3) Dashboard (KPIs + gráficos) (main)
-   4) Lançamentos (tabela) (main - já é o último bloco)
-   ========== */
+   Mobile priority layout:
+   1) Dashboard Financeiro (topbar + KPIs + gráficos)
+   2) Período
+   3) Adicionar lançamento
+   4) Lançamentos (tabela)
+   ==========
+   Sem alterar HTML: no mobile, vamos transformar .app em grid
+   e posicionar a tabela fora do fluxo visual (grid-row 4),
+   mantendo a tabela por último.
+*/
 @media (max-width: 900px){
+  /* Overwrite do seu flex mobile para grid (mais controle) */
   .app{
-    display: flex;
-    flex-direction: column;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto auto !important;
+    gap: 14px !important;
   }
 
-  /* Sidebar vem primeiro no mobile */
-  .sidebar{ order: 1; }
-  .main{ order: 2; }
+  /* “Blocos” principais */
+  .main{
+    order: initial !important;
+    grid-row: 1 !important;
+    padding: 18px !important;
+  }
 
-  /* sidebar deixa de ser sticky e não força 100vh */
   .sidebar{
-    position: relative;
-    top: auto;
-    height: auto;
-    width: 100%;
-    overflow: visible;
+    order: initial !important;
+    grid-row: 2 / span 2 !important; /* vai conter Período + Adicionar (vamos reordenar dentro) */
+    position: relative !important;
+    top: auto !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    padding: 18px !important;
   }
 
-  /* NÃO inverter as sections:
-     No seu HTML:
-     1ª sidebar-section = Adicionar lançamento
-     2ª sidebar-section = Período
-     (já está na ordem desejada)
-  */
+  /* A tabela precisa ir para o final. Como ela está dentro do main,
+     reordenamos as seções internas do main com flex. */
+  .main{
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
 
-  /* manter espaçamento agradável quando vira coluna */
-  .main{ padding: 18px; }
+  /* Dentro do main:
+     topbar (1), kpi-grid (2), grid charts (3), table-card (4) */
+  .topbar{ order: 1 !important; }
+  .kpi-grid{ order: 2 !important; }
+  .grid[aria-label="Gráficos"]{ order: 3 !important; }
+  .table-card{ order: 4 !important; }
+
+  /* Dentro da sidebar: queremos Período primeiro e Adicionar depois */
+  .sidebar{
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .sidebar > .brand{ order: 0 !important; }
+
+  /* 1ª sidebar-section = Adicionar lançamento (vai para depois) */
+  .sidebar > .sidebar-section:nth-of-type(1){ order: 2 !important; }
+
+  /* 2ª sidebar-section = Período (vai para antes) */
+  .sidebar > .sidebar-section:nth-of-type(2){ order: 1 !important; }
 }
