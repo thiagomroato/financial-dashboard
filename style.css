@@ -605,3 +605,51 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   .kpi{ grid-column: span 12; }
   table{ min-width: 620px; }
 }
+/* ==========
+   Mobile layout order:
+   1) Dashboard Financeiro (main)
+   2) Período
+   3) Adicionar lançamento
+   4) Lançamentos (tabela já é a última seção do main)
+   ========== */
+@media (max-width: 900px){
+  /* app vira coluna e a main vem antes da sidebar */
+  .app{
+    display: flex;
+    flex-direction: column;
+  }
+
+  .main{ order: 1; }
+  .sidebar{ order: 2; }
+
+  /* sidebar deixa de ser "sticky" no mobile e não força 100vh */
+  .sidebar{
+    position: relative;
+    top: auto;
+    height: auto;
+    width: 100%;
+    overflow: visible; /* evita scroll dentro da sidebar no mobile */
+  }
+
+  /* Reordenar seções dentro da sidebar:
+     - 1ª .sidebar-section = "Adicionar lançamento"
+     - 2ª .sidebar-section = "Período"
+     Queremos Período primeiro.
+  */
+  .sidebar > .sidebar-section:nth-of-type(1){ order: 2; }
+  .sidebar > .sidebar-section:nth-of-type(2){ order: 1; }
+
+  /* necessário para order funcionar nos filhos */
+  .sidebar{
+    display: flex;
+    flex-direction: column;
+    gap: 14px; /* mantém espaçamento bonito */
+  }
+
+  /* brand fica no topo da sidebar */
+  .sidebar > .brand{ order: 0; }
+
+  /* opcional: dá uma “respirada” entre main e sidebar */
+  .main{ padding-bottom: 10px; }
+  .sidebar{ padding-top: 10px; }
+}
