@@ -605,6 +605,29 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   .kpi{ grid-column: span 12; }
   table{ min-width: 620px; }
 }
+/* ...todo o seu CSS acima... */
+
+/* Responsive (blocos antigos) */
+@media (max-width: 1100px){
+  /* ... */
+}
+
+@media (max-width: 900px){
+  /* ... */
+}
+
+@media (max-width: 520px){
+  /* ... */
+}
+
+/* ✅ COLE AQUI (no final do arquivo) */
+@media (max-width: 900px){
+  /* ...bloco novo... */
+}
+
+@media (max-width: 520px){
+  /* ...bloco novo... */
+}
 /* ==========
    Mobile priority layout:
    1) Dashboard Financeiro (topbar + KPIs + gráficos)
