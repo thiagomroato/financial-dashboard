@@ -889,7 +889,51 @@ if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receit
 if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despesa", btnDespesa));
 if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
 if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
+// ===== Modal Edit: handlers (Salvar/Fechar) =====
+const closeModalBtn = document.getElementById("closeModal");
+const saveEditBtn = document.getElementById("saveEdit");
 
+function closeEditModal() {
+  if (modalEl) modalEl.style.display = "none";
+  editId = null;
+}
+
+if (closeModalBtn) {
+  closeModalBtn.addEventListener("click", () => closeEditModal());
+}
+
+if (saveEditBtn) {
+  saveEditBtn.addEventListener("click", async () => {
+    try {
+      if (!editId) {
+        alert("Nenhum lançamento selecionado para edição.");
+        return;
+      }
+
+      const descricao = (editDescricaoEl?.value || "").trim();
+      const valor = Number(editValorEl?.value || 0);
+
+      if (!descricao) {
+        alert("Descrição é obrigatória.");
+        return;
+      }
+      if (!Number.isFinite(valor)) {
+        alert("Valor inválido.");
+        return;
+      }
+
+      await updateDoc(doc(db, "transactions", editId), {
+        descricao,
+        valor
+      });
+
+      closeEditModal();
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível salvar a edição.");
+    }
+  });
+}
 /**
  * ==========
  * Boot
