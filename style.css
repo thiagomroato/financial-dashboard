@@ -718,3 +718,46 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 
   thead th, tbody td{ font-size: 12px; }
 }
+/* ==========
+   FIX mobile table: mostrar tudo + overflow horizontal com scrollbar
+   Cole NO FINAL do style.css
+   ========== */
+@media (max-width: 900px){
+  /* só a área da tabela pode ter overflow horizontal */
+  .table-wrap{
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* impede qualquer quebra de linha dentro da tabela */
+  .table-wrap table,
+  .table-wrap thead,
+  .table-wrap tbody,
+  .table-wrap tr,
+  .table-wrap th,
+  .table-wrap td{
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  /* força a tabela a ser mais larga que a tela => aparece scroll */
+  .table-wrap table{
+    width: auto !important;
+    min-width: 820px !important; /* ajuste aqui se quiser mais/menos */
+    table-layout: auto !important;
+  }
+
+  /* garante que o container da tabela não “estique” o layout da página */
+  html, body{
+    overflow-x: hidden !important;
+  }
+}
+
+@media (max-width: 520px){
+  .table-wrap table{
+    min-width: 900px !important;
+  }
+}
