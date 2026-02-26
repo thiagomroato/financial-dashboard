@@ -642,17 +642,14 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 /* ==========
    MOBILE (prioridade)
    + corrige vazamento geral (NADA vaza, exceto a tabela)
-   ==========
-*/
+   ========== */
 @media (max-width: 900px){
-  /* trava qualquer vazamento horizontal no site */
   html, body{
     overflow-x: hidden !important;
     width: 100%;
     max-width: 100%;
   }
 
-  /* app vira grid */
   .app{
     display: grid;
     grid-template-columns: 1fr;
@@ -662,7 +659,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     max-width: 100%;
   }
 
-  /* main reordena */
   .main{
     grid-row: 1;
     display: flex;
@@ -679,7 +675,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   .grid[aria-label="Gráficos"]{ order: 3; margin-bottom: 0; }
   .table-card{ order: 4; }
 
-  /* Sidebar abaixo do dashboard */
   .sidebar{
     grid-row: 2 / span 2;
     position: relative;
@@ -691,7 +686,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     padding: 14px;
     border-right: none;
     border-bottom: 1px solid var(--stroke);
-
     min-width: 0;
   }
 
@@ -703,29 +697,22 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 
   .sidebar > .brand{ order: 0; margin-bottom: 0; padding-bottom: 6px; }
 
-  /* Período primeiro */
   .sidebar > .sidebar-section:nth-of-type(2){ order: 1; }
-  /* Adicionar depois */
   .sidebar > .sidebar-section:nth-of-type(1){ order: 2; }
 
-  /* Tipografia */
   .page-title{ font-size: 22px; }
   .page-subtitle{ font-size: 12px; }
 
-  /* KPIs 2 por linha */
   .kpi{ grid-column: span 6; padding: 12px 14px 14px; }
   .kpi-value{ font-size: 20px; }
 
-  /* Charts menores */
   canvas{ height: 220px !important; max-width: 100% !important; }
 
-  /* Inputs sem zoom no iPhone */
   .sidebar input,
   .modal-content input{
     font-size: 16px;
   }
 
-  /* tudo deve caber sem estourar */
   .sidebar-section,
   .card,
   .chart-card{
@@ -734,7 +721,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     min-width: 0;
   }
 
-  /* ÚNICA área que pode rolar horizontalmente: table-wrap */
   .table-wrap{
     overflow-x: auto !important;
     overflow-y: hidden !important;
@@ -743,7 +729,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     padding: 0 8px 10px !important;
   }
 
-  /* força a tabela a ser maior que a tela (sem quebra) */
   .table-wrap table{
     width: max-content;
     min-width: 820px;
@@ -752,7 +737,6 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 }
 
 @media (max-width: 520px){
-  /* KPIs 1 por linha */
   .kpi{ grid-column: span 12; }
 
   .main{ padding: 12px; }
@@ -768,51 +752,42 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 }
 
 /* ==========
-   Tabela (DESKTOP): ocupar 100% do card (sem “buraco” à direita)
-   Mantém mobile com scroll horizontal e sem quebras
+   DESKTOP: preencher a largura da tabela (elimina “espaço sobrando”)
+   - no mobile continua com width:max-content e scroll horizontal
    ========== */
-
-/* Desktop / geral */
-.table-wrap{
-  width: 100%;
-}
-
-/* No desktop a tabela deve preencher toda a largura do container */
-.table-wrap table{
-  width: 100%;
-  min-width: 0;          /* evita comportamento estranho */
-  table-layout: fixed;   /* distribui melhor e evita “encolher” */
-}
-
-/* Distribuição das colunas:
-   1) Descrição: grande
-   2) Tipo: pequena
-   3) Valor: grande (tem várias linhas)
-   4) Ações: fixa
-*/
-.table-wrap thead th:nth-child(1),
-.table-wrap tbody td:nth-child(1){ width: 42%; }
-
-.table-wrap thead th:nth-child(2),
-.table-wrap tbody td:nth-child(2){ width: 14%; }
-
-.table-wrap thead th:nth-child(3),
-.table-wrap tbody td:nth-child(3){ width: 30%; }
-
-.table-wrap thead th:nth-child(4),
-.table-wrap tbody td:nth-child(4){ width: 14%; }
-
-/* Ações alinhadas melhor */
-.table-wrap tbody td:nth-child(4){
-  white-space: nowrap;
-}
-
-/* Desktop: deixa descrição e valor quebrarem linhas pra preencher melhor o espaço */
 @media (min-width: 901px){
+  .table-wrap{
+    overflow-x: hidden;  /* desktop não precisa do scroll lateral */
+  }
+
+  .table-wrap table{
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  /* Colunas: ajuste fino pra “preencher tudo” */
+  .table-wrap thead th:nth-child(1),
+  .table-wrap tbody td:nth-child(1){ width: 44%; }
+
+  .table-wrap thead th:nth-child(2),
+  .table-wrap tbody td:nth-child(2){ width: 12%; }
+
+  .table-wrap thead th:nth-child(3),
+  .table-wrap tbody td:nth-child(3){ width: 32%; }
+
+  .table-wrap thead th:nth-child(4),
+  .table-wrap tbody td:nth-child(4){ width: 12%; }
+
+  /* Desktop: pode quebrar em descrição e valor (fica mais “preenchido”) */
   .table-wrap tbody td:nth-child(1),
   .table-wrap tbody td:nth-child(3){
     white-space: normal;
     overflow-wrap: anywhere;
-    word-break: normal;
+  }
+
+  /* Ações sempre em uma linha */
+  .table-wrap tbody td:nth-child(4){
+    white-space: nowrap;
   }
 }
