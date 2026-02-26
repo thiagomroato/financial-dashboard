@@ -1,873 +1,307 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 Dashboard Financeiro 2030 - Colaborativo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow-x: hidden;
-        }
-
-        body {
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            background: white;
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
-            width: 100%;
-        }
-
-        .header h1 {
-            margin: 0;
-            color: #333;
-            font-size: clamp(1.5rem, 5vw, 2.5rem);
-            font-weight: 700;
-        }
-
-        .header p {
-            margin: 5px 0 0 0;
-            color: #666;
-            font-size: clamp(0.9rem, 3vw, 1.1rem);
-        }
-
-        .container-main {
-            flex: 1;
-            width: 100%;
-            padding: clamp(20px, 3vw, 40px);
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        .kpi-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: clamp(12px, 2vw, 20px);
-            margin-bottom: clamp(20px, 3vw, 30px);
-            width: 100%;
-        }
-
-        .kpi-card {
-            background: white;
-            padding: clamp(15px, 3vw, 25px);
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s;
-            word-break: break-word;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .kpi-label {
-            color: #999;
-            margin: 0;
-            font-size: clamp(0.75rem, 2vw, 0.9rem);
-            font-weight: 600;
-        }
-
-        .kpi-value {
-            font-size: clamp(1.2rem, 4vw, 2rem);
-            font-weight: 700;
-            color: #667eea;
-            margin: 10px 0 0 0;
-            word-break: break-word;
-        }
-
-        .actions-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: clamp(10px, 2vw, 15px);
-            margin-bottom: clamp(20px, 3vw, 30px);
-            width: 100%;
-        }
-
-        .btn-acao {
-            padding: clamp(12px, 2vw, 15px);
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-            font-size: clamp(0.85rem, 2vw, 1rem);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .btn-acao-receita {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-
-        .btn-acao-receita:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 233, 123, 0.4);
-        }
-
-        .btn-acao-despesa {
-            background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
-        }
-
-        .btn-acao-despesa:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
-        }
-
-        .btn-acao-investimento {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .btn-acao-investimento:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
-        }
-
-        .table-container {
-            background: white;
-            padding: clamp(15px, 3vw, 30px);
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            margin-bottom: clamp(20px, 3vw, 30px);
-            width: 100%;
-            overflow: auto;
-        }
-
-        .table-container h4 {
-            color: #333;
-            margin-bottom: clamp(12px, 2vw, 20px);
-            font-weight: 700;
-            font-size: clamp(1rem, 3vw, 1.3rem);
-        }
-
-        .table {
-            margin: 0;
-            font-size: clamp(0.75rem, 2vw, 0.95rem);
-        }
-
-        .table thead {
-            background: #f8f9fa;
-            position: sticky;
-            top: 0;
-        }
-
-        .table th {
-            border: none;
-            color: #333;
-            font-weight: 600;
-            padding: clamp(8px, 2vw, 15px);
-        }
-
-        .table td {
-            padding: clamp(8px, 2vw, 12px);
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .btn-delete {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-
-        .btn-delete:hover {
-            background: #ee5a52;
-        }
-
-        .form-control, .form-select {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            font-size: 1rem;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
-
-        .btn-salvar {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-        }
-
-        .btn-salvar-receita {
-            background: #28a745;
-        }
-
-        .btn-salvar-receita:hover {
-            background: #218838;
-        }
-
-        .btn-salvar-despesa {
-            background: #dc3545;
-        }
-
-        .btn-salvar-despesa:hover {
-            background: #c82333;
-        }
-
-        .btn-salvar-investimento {
-            background: #17a2b8;
-        }
-
-        .btn-salvar-investimento:hover {
-            background: #138496;
-        }
-
-        .status-sincronizacao {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            z-index: 1000;
-        }
-
-        .status-sincronizacao.online {
-            color: #28a745;
-        }
-
-        .status-sincronizacao.offline {
-            color: #dc3545;
-        }
-
-        .pulsing {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .modal-header {
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .modal-content {
-            border-radius: 15px;
-            border: none;
-        }
-
-        .modal-body {
-            overflow-y: auto;
-            max-height: 70vh;
-        }
-
-        /* Scrollbar customizado */
-        .container-main::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .container-main::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .container-main::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-        }
-
-        .container-main::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        .table-container::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        .table-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        .table-container::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 20px;
-            }
-
-            .container-main {
-                padding: 15px;
-            }
-
-            .actions-buttons {
-                grid-template-columns: 1fr;
-            }
-
-            .kpi-row {
-                grid-template-columns: 1fr;
-            }
-
-            .table {
-                font-size: 0.75rem;
-            }
-
-            .table th, .table td {
-                padding: 8px 5px;
-            }
-
-            .status-sincronizacao {
-                bottom: 10px;
-                right: 10px;
-                font-size: 0.8rem;
-                padding: 8px 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header h1 {
-                font-size: 1.2rem;
-            }
-
-            .header p {
-                font-size: 0.8rem;
-            }
-
-            .table-container h4 {
-                font-size: 0.95rem;
-            }
-
-            .actions-buttons {
-                grid-template-columns: 1fr;
-            }
-
-            .btn-acao {
-                font-size: 0.8rem;
-                padding: 10px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8"/>
+  <!-- Bloqueia zoom (pinch/double-tap) -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>Financial Dashboard</title>
+
+  <link rel="stylesheet" href="style.css?v=41"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-    <!-- HEADER -->
-    <div class="header">
-        <h1><i class="fas fa-chart-line"></i> 💰 Dashboard Financeiro 2030</h1>
-        <p>🌐 Controle compartilhado em tempo real - Dados colaborativos</p>
-    </div>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true"></div>
+        <div class="brand-text">
+          <div class="brand-title">Dashboard</div>
+          <div class="brand-subtitle">Finanças Pessoais</div>
+        </div>
+      </div>
 
-    <!-- CONTEÚDO PRINCIPAL -->
-    <div class="container-main">
-        <!-- KPIs -->
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <p class="kpi-label">Patrimônio Atual</p>
-                <p class="kpi-value" id="totalPatrimonio">R$ 0,00</p>
-            </div>
-            <div class="kpi-card">
-                <p class="kpi-label">Receitas (Mês)</p>
-                <p class="kpi-value" id="totalReceitas">R$ 0,00</p>
-            </div>
-            <div class="kpi-card">
-                <p class="kpi-label">Despesas (Mês)</p>
-                <p class="kpi-value" id="totalDespesas">R$ 0,00</p>
-            </div>
-            <div class="kpi-card">
-                <p class="kpi-label">Meta 2030</p>
-                <p class="kpi-value">R$ 112.000,00</p>
-            </div>
+      <div class="sidebar-section">
+        <div class="section-title">Adicionar lançamento</div>
+
+        <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
+          <button id="btnReceita" class="btn receita" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Receita
+          </button>
+          <button id="btnDespesa" class="btn despesa" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Despesa
+          </button>
+          <button id="btnInvest" class="btn invest" type="button">
+            <span class="btn-dot" aria-hidden="true"></span>
+            Investimento
+          </button>
         </div>
 
-        <!-- BOTÕES DE AÇÃO -->
-        <div class="actions-buttons">
-            <button class="btn-acao btn-acao-receita" id="btnReceita">➕ RECEITA</button>
-            <button class="btn-acao btn-acao-despesa" id="btnDespesa">➖ DESPESA</button>
-            <button class="btn-acao btn-acao-investimento" id="btnInvestimento">📈 INVESTIMENTO</button>
-        </div>
+        <!-- FORM (toggle via JS) -->
+        <div id="addForm" style="display:none; margin-top: 14px;">
+          <label class="field">
+            <span class="field-label">Descrição</span>
+            <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
+          </label>
 
-        <!-- TABELA DE TRANSAÇÕES -->
-        <div class="table-container">
-            <h4>📋 Histórico de Transações</h4>
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Tipo</th>
-                        <th>Descrição</th>
-                        <th>Valor</th>
-                        <th>Usuário</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaTransacoes">
-                    <tr><td colspan="6" class="text-center text-muted">Carregando transações...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+          <!-- valor padrão (Receita/Despesa) e também principal do CDB -->
+          <label class="field" id="valorField">
+            <span class="field-label">Valor</span>
+            <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal" step="0.01">
+          </label>
 
-    <!-- MODAL RECEITA -->
-    <div class="modal fade" id="modalReceita" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">➕ Adicionar Receita</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Data</label>
-                        <input type="date" class="form-control" id="receitaData">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Categoria</label>
-                        <select class="form-select" id="receitaCategoria">
-                            <option value="Salário">Salário</option>
-                            <option value="Rendimento">Rendimento</option>
-                            <option value="Bônus">Bônus</option>
-                            <option value="Aporte">Aporte</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Descrição</label>
-                        <input type="text" class="form-control" id="receitaDesc" placeholder="Ex: Salário mensal">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Valor (R$)</label>
-                        <input type="number" class="form-control" id="receitaValor" step="0.01" placeholder="0.00">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-receita" id="btnSalvarReceita">✅ Salvar</button>
-                </div>
+          <!-- Campos de investimento -->
+          <div class="invest-fields" id="investFields" hidden>
+            <!-- SUBTIPO (dropdown custom igual Ano/Mês) -->
+            <div class="field">
+              <span class="field-label">Tipo de investimento</span>
+
+              <div class="dd dd--blue" id="investKindDD">
+                <button class="dd-btn" id="investKindBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="dd-dot" aria-hidden="true"></span>
+                  <span class="dd-value" id="investKindValue">Ação</span>
+                  <span class="dd-caret" aria-hidden="true"></span>
+                </button>
+                <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar tipo de investimento" id="investKindMenu"></div>
+              </div>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL DESPESA -->
-    <div class="modal fade" id="modalDespesa" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">➖ Adicionar Despesa</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <!-- AÇÃO -->
+            <div id="stockFields">
+              <!-- MERCADO (dropdown custom igual Ano/Mês) -->
+              <div class="field">
+                <span class="field-label">Mercado</span>
+
+                <div class="dd dd--purple" id="stockMarketDD">
+                  <button class="dd-btn" id="stockMarketBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="dd-dot" aria-hidden="true"></span>
+                    <span class="dd-value" id="stockMarketValue">Brasil (BRL)</span>
+                    <span class="dd-caret" aria-hidden="true"></span>
+                  </button>
+                  <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mercado" id="stockMarketMenu"></div>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Data</label>
-                        <input type="date" class="form-control" id="despesaData">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Categoria</label>
-                        <select class="form-select" id="despesaCategoria">
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Descrição</label>
-                        <input type="text" class="form-control" id="despesaDesc" placeholder="Ex: Supermercado">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Valor (R$)</label>
-                        <input type="number" class="form-control" id="despesaValor" step="0.01" placeholder="0.00">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-despesa" id="btnSalvarDespesa">✅ Salvar</button>
-                </div>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Ticker</span>
+                <input type="text" id="ticker" placeholder="Ex: ITSA4.SA (BR) / AAPL (US)">
+              </label>
+
+              <div class="field-row">
+                <label class="field">
+                  <span class="field-label">Quantidade</span>
+                  <input type="number" id="qtdAcoes" placeholder="Ex: 2" inputmode="numeric" step="1" min="0">
+                </label>
+
+                <label class="field">
+                  <span class="field-label">Preço/unidade</span>
+                  <input type="number" id="precoAcao" placeholder="Ex: 15.00" inputmode="decimal" step="0.01" min="0">
+                </label>
+              </div>
+
+              <div class="total-preview">
+                <span>Total</span>
+                <strong id="investTotal">R$ 0,00</strong>
+              </div>
+
+              <p class="sidebar-hint" style="margin-top:8px">
+                Para ações, o <b>Valor</b> é preenchido automaticamente com <code>quantidade × preço</code>.
+              </p>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL INVESTIMENTO -->
-    <div class="modal fade" id="modalInvestimento" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">📈 Adicionar Investimento</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Data</label>
-                        <input type="date" class="form-control" id="investData">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Tipo</label>
-                        <select class="form-select" id="investTipo">
-                            <option value="Ações Brasil">Ações Brasil</option>
-                            <option value="P&G USD">P&G USD</option>
-                            <option value="Renda Fixa">Renda Fixa</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Moeda</label>
-                        <select class="form-select" id="investMoeda">
-                            <option value="BRL">BRL (Real)</option>
-                            <option value="USD">USD (Dólar)</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Valor</label>
-                        <input type="number" class="form-control" id="investValor" step="0.01" placeholder="0.00">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-salvar btn-salvar-investimento" id="btnSalvarInvestimento">✅ Salvar</button>
-                </div>
+            <!-- CDB -->
+            <div id="cdbFields" hidden>
+              <label class="field">
+                <span class="field-label">% do CDI</span>
+                <input type="number" id="cdbPctCdi" placeholder="Ex: 110" inputmode="decimal" step="0.01" min="0">
+              </label>
+
+              <p class="sidebar-hint" style="margin-top:8px">
+                Para CDB, informe o <b>Valor</b> (principal) e o <b>%CDI</b>.
+              </p>
             </div>
+          </div>
+
+          <button id="btnAdd" class="btn btn-primary" type="button" style="width: 100%; margin-top: 10px;">
+            Adicionar
+          </button>
         </div>
+      </div>
+
+      <!-- PERÍODO -->
+      <div class="sidebar-section">
+        <div class="section-title">Período</div>
+
+        <div class="field">
+          <span class="field-label">Ano</span>
+          <div class="dd dd--blue" id="yearDD">
+            <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-dot" aria-hidden="true"></span>
+              <span class="dd-value" id="yearValue">Carregando...</span>
+              <span class="dd-caret" aria-hidden="true"></span>
+            </button>
+            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar ano" id="yearMenu"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Mês</span>
+          <div class="dd dd--purple" id="monthDD">
+            <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-dot" aria-hidden="true"></span>
+              <span class="dd-value" id="monthValue">Todos</span>
+              <span class="dd-caret" aria-hidden="true"></span>
+            </button>
+            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mês" id="monthMenu"></div>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button class="mini-btn" id="clearFilters" type="button">Limpar</button>
+        </div>
+
+        <p class="sidebar-hint">
+          O ano é gerado automaticamente a partir das datas dos lançamentos (e sempre inclui o ano atual).
+        </p>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="page-title">Dashboard Financeiro</h1>
+          <p class="page-subtitle">Resumo, gráficos e lançamentos em tempo real</p>
+        </div>
+      </header>
+
+      <!-- KPIs -->
+      <section class="kpi-grid" aria-label="Indicadores">
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Saldo</span>
+            <span class="kpi-badge kpi-badge--blue">Período</span>
+          </div>
+          <h2 class="kpi-value" id="saldo">R$ 0</h2>
+          <div class="kpi-spark" aria-hidden="true"></div>
+        </article>
+
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Receitas</span>
+            <span class="kpi-badge kpi-badge--green">Entrada</span>
+          </div>
+          <h2 class="kpi-value" id="receitas">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--green" aria-hidden="true"></div>
+        </article>
+
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Despesas</span>
+            <span class="kpi-badge kpi-badge--red">Saída</span>
+          </div>
+          <h2 class="kpi-value" id="despesas">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--red" aria-hidden="true"></div>
+        </article>
+
+        <article class="card kpi">
+          <div class="kpi-head">
+            <span class="kpi-label">Investimentos</span>
+            <span class="kpi-badge kpi-badge--purple">Carteira</span>
+          </div>
+          <h2 class="kpi-value" id="investimentos">R$ 0</h2>
+          <div class="kpi-spark kpi-spark--purple" aria-hidden="true"></div>
+        </article>
+      </section>
+
+      <!-- CHARTS -->
+      <section class="grid" aria-label="Gráficos">
+        <article class="card chart-card span-7">
+          <div class="card-head">
+            <h3 class="card-title">Receitas e Despesas</h3>
+            <div class="card-actions">
+              <span class="chip">Receita</span>
+              <span class="chip chip--muted">Despesa</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="barChart"></canvas>
+          </div>
+        </article>
+
+        <article class="card chart-card span-5">
+          <div class="card-head">
+            <h3 class="card-title">Distribuição</h3>
+            <span class="chip chip--muted">Receita / Despesa / Invest.</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <!-- TABLE -->
+      <section class="card table-card" aria-label="Lançamentos">
+        <div class="card-head">
+          <h3 class="card-title">Lançamentos</h3>
+          <span class="chip chip--muted">Editar / Excluir</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th class="th-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL EDIT -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Editar lançamento">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h3>Editar Lançamento</h3>
+        <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Descrição</span>
+        <input type="text" id="editDescricao">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Valor</span>
+        <input type="number" id="editValor" inputmode="decimal" step="0.01">
+      </label>
+
+      <button id="saveEdit" class="btn btn-primary" type="button">Salvar</button>
     </div>
+  </div>
 
-    <!-- STATUS SINCRONIZAÇÃO -->
-    <div class="status-sincronizacao online" id="statusSync">
-        <i class="fas fa-circle pulsing"></i> Sincronizado
-    </div>
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
 
-    <!-- FIREBASE -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
-
-    <!-- BOOTSTRAP -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- SCRIPT APP -->
-    <script>
-        console.log('🚀 DASHBOARD COLABORATIVO INICIANDO...');
-
-        // FIREBASE CONFIG
-        const firebaseConfig = {
-            apiKey: "AIzaSyChd7Fs6qstzc3uMdOrcoC-4KMWH24MqZw",
-            authDomain: "financial-dashboard-a2b16.firebaseapp.com",
-            projectId: "financial-dashboard-a2b16",
-            storageBucket: "financial-dashboard-a2b16.firebasestorage.app",
-            messagingSenderId: "538205467615",
-            appId: "1:538205467615:web:24326fa7f323902059ca6a"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        console.log('✅ FIREBASE INICIALIZADO');
-
-        let transacoes = [];
-        let modalReceita = null;
-        let modalDespesa = null;
-        let modalInvestimento = null;
-
-        // INICIALIZAR QUANDO PÁGINA CARREGA
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ DOM CARREGADO');
-            
-            // Inicializar Modals
-            modalReceita = new bootstrap.Modal(document.getElementById('modalReceita'));
-            modalDespesa = new bootstrap.Modal(document.getElementById('modalDespesa'));
-            modalInvestimento = new bootstrap.Modal(document.getElementById('modalInvestimento'));
-            console.log('✅ MODALS INICIALIZADOS');
-            
-            // Adicionar event listeners aos botões de ABRIR
-            document.getElementById('btnReceita').addEventListener('click', abrirModalReceita);
-            document.getElementById('btnDespesa').addEventListener('click', abrirModalDespesa);
-            document.getElementById('btnInvestimento').addEventListener('click', abrirModalInvestimento);
-            
-            // Adicionar event listeners aos botões de SALVAR
-            document.getElementById('btnSalvarReceita').addEventListener('click', salvarReceita);
-            document.getElementById('btnSalvarDespesa').addEventListener('click', salvarDespesa);
-            document.getElementById('btnSalvarInvestimento').addEventListener('click', salvarInvestimento);
-            
-            console.log('✅ EVENT LISTENERS ADICIONADOS');
-            
-            carregarTransacoes();
-        });
-
-        // ========== CARREGAR TRANSAÇÕES EM TEMPO REAL ==========
-        function carregarTransacoes() {
-            console.log('📥 CARREGANDO TRANSAÇÕES COMPARTILHADAS');
-            
-            db.collection('transacoes')
-                .orderBy('dataCriacao', 'desc')
-                .onSnapshot((snap) => {
-                    transacoes = [];
-                    snap.forEach(doc => {
-                        transacoes.push({ id: doc.id, ...doc.data() });
-                    });
-                    console.log('✅', transacoes.length, 'TRANSAÇÕES CARREGADAS');
-                    atualizarStatus('online');
-                    atualizarTabela();
-                    atualizarKPIs();
-                }, (error) => {
-                    console.error('❌ ERRO:', error);
-                    atualizarStatus('offline');
-                });
-        }
-
-        // ========== ATUALIZAR STATUS ==========
-        function atualizarStatus(status) {
-            const statusDiv = document.getElementById('statusSync');
-            if (status === 'online') {
-                statusDiv.className = 'status-sincronizacao online';
-                statusDiv.innerHTML = '<i class="fas fa-circle pulsing"></i> Sincronizado';
-            } else {
-                statusDiv.className = 'status-sincronizacao offline';
-                statusDiv.innerHTML = '<i class="fas fa-circle-notch"></i> Desconectado';
-            }
-        }
-
-        // ========== ATUALIZAR TABELA ==========
-        function atualizarTabela() {
-            const tbody = document.getElementById('tabelaTransacoes');
-            tbody.innerHTML = '';
-
-            if (transacoes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma transação registrada</td></tr>';
-                return;
-            }
-
-            transacoes.forEach(t => {
-                const data = new Date(t.data).toLocaleDateString('pt-BR');
-                const moeda = t.moeda === 'USD' ? 'US$' : 'R$';
-                
-                let tipo = '';
-                if (t.tipo === 'receita') tipo = '<span class="badge bg-success">Receita</span>';
-                if (t.tipo === 'despesa') tipo = '<span class="badge bg-danger">Despesa</span>';
-                if (t.tipo === 'investimento') tipo = '<span class="badge bg-info">Investimento</span>';
-
-                const usuario = t.usuario || 'Usuário';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${data}</td>
-                        <td>${tipo}</td>
-                        <td>${t.descricao || t.categoria}</td>
-                        <td><strong>${moeda} ${t.valor.toFixed(2)}</strong></td>
-                        <td><small>${usuario}</small></td>
-                        <td><button class="btn-delete" onclick="deletar('${t.id}')">🗑️</button></td>
-                    </tr>
-                `;
-            });
-        }
-
-        // ========== ATUALIZAR KPIs ==========
-        function atualizarKPIs() {
-            const hoje = new Date();
-            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-            
-            let patrimonio = 0;
-            let receitas = 0;
-            let despesas = 0;
-
-            transacoes.forEach(t => {
-                const valor = t.valor;
-                
-                if (t.tipo === 'receita' || t.tipo === 'investimento') {
-                    patrimonio += valor;
-                } else if (t.tipo === 'despesa') {
-                    patrimonio -= valor;
-                }
-
-                if (t.data.startsWith(mesAtual)) {
-                    if (t.tipo === 'receita') receitas += valor;
-                    if (t.tipo === 'despesa') despesas += valor;
-                }
-            });
-
-            document.getElementById('totalPatrimonio').textContent = 'R$ ' + patrimonio.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('totalReceitas').textContent = 'R$ ' + receitas.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('totalDespesas').textContent = 'R$ ' + despesas.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        }
-
-        // ========== ABRIR MODAL RECEITA ==========
-        function abrirModalReceita() {
-            console.log('📂 ABRINDO MODAL RECEITA');
-            const hoje = new Date().toISOString().split('T')[0];
-            document.getElementById('receitaData').value = hoje;
-            document.getElementById('receitaDesc').value = '';
-            document.getElementById('receitaValor').value = '';
-            modalReceita.show();
-        }
-
-        // ========== ABRIR MODAL DESPESA ==========
-        function abrirModalDespesa() {
-            console.log('📂 ABRINDO MODAL DESPESA');
-            const hoje = new Date().toISOString().split('T')[0];
-            document.getElementById('despesaData').value = hoje;
-            document.getElementById('despesaDesc').value = '';
-            document.getElementById('despesaValor').value = '';
-            modalDespesa.show();
-        }
-
-        // ========== ABRIR MODAL INVESTIMENTO ==========
-        function abrirModalInvestimento() {
-            console.log('📂 ABRINDO MODAL INVESTIMENTO');
-            const hoje = new Date().toISOString().split('T')[0];
-            document.getElementById('investData').value = hoje;
-            document.getElementById('investValor').value = '';
-            modalInvestimento.show();
-        }
-
-        // ========== SALVAR RECEITA ==========
-        function salvarReceita() {
-            console.log('💰 SALVANDO RECEITA');
-            const data = document.getElementById('receitaData').value;
-            const categoria = document.getElementById('receitaCategoria').value;
-            const desc = document.getElementById('receitaDesc').value;
-            const valor = parseFloat(document.getElementById('receitaValor').value);
-
-            if (!data || !desc || !valor) {
-                alert('❌ Preencha todos os campos!');
-                return;
-            }
-
-            db.collection('transacoes').add({
-                data: data,
-                tipo: 'receita',
-                categoria: categoria,
-                descricao: desc,
-                valor: valor,
-                moeda: 'BRL',
-                usuario: 'MoratoFamily',
-                dataCriacao: new Date()
-            }).then(() => {
-                console.log('✅ RECEITA SALVA');
-                modalReceita.hide();
-                alert('✅ Receita adicionada ao dashboard compartilhado!');
-            }).catch(err => {
-                console.error('❌ ERRO:', err);
-                alert('❌ Erro: ' + err.message);
-            });
-        }
-
-        // ========== SALVAR DESPESA ==========
-        function salvarDespesa() {
-            console.log('💸 SALVANDO DESPESA');
-            const data = document.getElementById('despesaData').value;
-            const categoria = document.getElementById('despesaCategoria').value;
-            const desc = document.getElementById('despesaDesc').value;
-            const valor = parseFloat(document.getElementById('despesaValor').value);
-
-            if (!data || !desc || !valor) {
-                alert('❌ Preencha todos os campos!');
-                return;
-            }
-
-            db.collection('transacoes').add({
-                data: data,
-                tipo: 'despesa',
-                categoria: categoria,
-                descricao: desc,
-                valor: valor,
-                moeda: 'BRL',
-                usuario: 'MoratoFamily',
-                dataCriacao: new Date()
-            }).then(() => {
-                console.log('✅ DESPESA SALVA');
-                modalDespesa.hide();
-                alert('✅ Despesa adicionada ao dashboard compartilhado!');
-            }).catch(err => {
-                console.error('❌ ERRO:', err);
-                alert('❌ Erro: ' + err.message);
-            });
-        }
-
-        // ========== SALVAR INVESTIMENTO ==========
-        function salvarInvestimento() {
-            console.log('📈 SALVANDO INVESTIMENTO');
-            const data = document.getElementById('investData').value;
-            const tipo = document.getElementById('investTipo').value;
-            const moeda = document.getElementById('investMoeda').value;
-            const valor = parseFloat(document.getElementById('investValor').value);
-
-            if (!data || !valor) {
-                alert('❌ Preencha todos os campos!');
-                return;
-            }
-
-            db.collection('transacoes').add({
-                data: data,
-                tipo: 'investimento',
-                categoria: tipo,
-                descricao: tipo,
-                valor: valor,
-                moeda: moeda,
-                usuario: 'MoratoFamily',
-                dataCriacao: new Date()
-            }).then(() => {
-                console.log('✅ INVESTIMENTO SALVO');
-                modalInvestimento.hide();
-                alert('✅ Investimento adicionado ao dashboard compartilhado!');
-            }).catch(err => {
-                console.error('❌ ERRO:', err);
-                alert('❌ Erro: ' + err.message);
-            });
-        }
-
-        // ========== DELETAR ==========
-        function deletar(id) {
-            if (confirm('🗑️ Deletar esta transação?')) {
-                db.collection('transacoes').doc(id).delete().then(() => {
-                    console.log('✅ DELETADO');
-                    alert('✅ Transação removida do dashboard!');
-                }).catch(err => {
-                    alert('❌ Erro: ' + err.message);
-                });
-            }
-        }
-
-        console.log('✅ DASHBOARD COLABORATIVO PRONTO!');
-    </script>
+  <script>
+    const modal = document.getElementById("modal");
+    const closeModal = document.getElementById("closeModal");
+    if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    });
+  </script>
 </body>
 </html>
