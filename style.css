@@ -295,6 +295,7 @@ body{
   border-color: rgba(255,255,255,.16);
 }
 
+/* ===== Dropdown menu + scrollbar ===== */
 .dd-menu{
   position: absolute;
   left: 0;
@@ -309,11 +310,36 @@ body{
   box-shadow: 0 28px 70px rgba(0,0,0,.55);
   backdrop-filter: blur(10px);
 
-  overflow: hidden;
+  /* antes: overflow:hidden; agora: scroll vertical quando precisar */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
   max-height: 240px;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(109,124,255,.55) rgba(15,23,42,.55);
 }
 
 .dd.is-open .dd-menu{ display: block; }
+
+/* WebKit scrollbar só do dropdown */
+.dd-menu::-webkit-scrollbar{ width: 9px; }
+.dd-menu::-webkit-scrollbar-track{
+  background: rgba(15,23,42,.55);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+}
+.dd-menu::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, rgba(109,124,255,.55), rgba(168,85,247,.45));
+  border-radius: 999px;
+  border: 2px solid rgba(15,23,42,.65);
+}
+.dd-menu::-webkit-scrollbar-thumb:hover{
+  background: linear-gradient(180deg, rgba(109,124,255,.75), rgba(168,85,247,.65));
+}
 
 .dd-item{
   padding: 10px 12px;
@@ -680,57 +706,16 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 
 /* ==========
    Mobile: somente a tabela de Lançamentos pode “vazar” (scroll horizontal)
+   - Mantém tudo em uma linha e cria scrollbar horizontal
    ========== */
 @media (max-width: 900px){
-  /* table-wrap é a única área com scroll horizontal */
-  .table-wrap{
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    padding: 0 8px 10px;
-  }
-
-  /* tabela estilo planilha: não quebrar linha */
-  thead th,
-  tbody td{
-    white-space: nowrap;
-    word-break: normal;
-  }
-
-  /* força largura para aparecer scroll horizontal */
-  table{
-    width: max-content;
-    min-width: 680px;
-  }
-}
-
-@media (max-width: 520px){
-  /* KPIs 1 por linha */
-  .kpi{ grid-column: span 12; }
-
-  .main{ padding: 12px; }
-  .sidebar{ padding: 12px; }
-
-  canvas{ height: 200px !important; }
-
-  /* Em telas muito pequenas, aumenta um pouco o min-width para facilitar scroll */
-  table{ min-width: 720px; }
-
-  thead th, tbody td{ font-size: 12px; }
-}
-/* ==========
-   FIX mobile table: mostrar tudo + overflow horizontal com scrollbar
-   Cole NO FINAL do style.css
-   ========== */
-@media (max-width: 900px){
-  /* só a área da tabela pode ter overflow horizontal */
   .table-wrap{
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
+    padding: 0 8px 10px !important;
   }
 
-  /* impede qualquer quebra de linha dentro da tabela */
   .table-wrap table,
   .table-wrap thead,
   .table-wrap tbody,
@@ -743,21 +728,29 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     hyphens: none !important;
   }
 
-  /* força a tabela a ser mais larga que a tela => aparece scroll */
   .table-wrap table{
     width: auto !important;
     min-width: 820px !important; /* ajuste aqui se quiser mais/menos */
     table-layout: auto !important;
   }
 
-  /* garante que o container da tabela não “estique” o layout da página */
   html, body{
     overflow-x: hidden !important;
   }
 }
 
 @media (max-width: 520px){
+  /* KPIs 1 por linha */
+  .kpi{ grid-column: span 12; }
+
+  .main{ padding: 12px; }
+  .sidebar{ padding: 12px; }
+
+  canvas{ height: 200px !important; }
+
   .table-wrap table{
     min-width: 900px !important;
   }
+
+  thead th, tbody td{ font-size: 12px; }
 }
