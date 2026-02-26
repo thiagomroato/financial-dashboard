@@ -9,7 +9,8 @@ import {
   updateDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /**
@@ -99,6 +100,28 @@ function usdToBrl(usdValue, usdBrl) {
   return u * fxRate;
 }
 
+// Parcelamento helpers
+function addMonths(date, months) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  // Ajuste para meses com menos dias (ex: 31 -> 30/28)
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+}
+
+function splitAmount(total, parts) {
+  const cents = Math.round(Number(total) * 100);
+  const base = Math.floor(cents / parts);
+  const rem = cents % parts;
+  const arr = Array.from({ length: parts }, (_, i) => base + (i < rem ? 1 : 0));
+  return arr.map(c => c / 100);
+}
+
+function uid() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const monthNames = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
@@ -124,6 +147,13 @@ const addFormEl = document.getElementById("addForm");
 // Inputs
 const descricaoEl = document.getElementById("descricao");
 const valorEl = document.getElementById("valor");
+
+// Pagamento (Despesa)
+const payModeWrapEl = document.getElementById("payModeWrap");
+const btnPix = document.getElementById("btnPix");
+const btnCartao = document.getElementById("btnCartao");
+const installmentsWrapEl = document.getElementById("installmentsWrap");
+const parcelasEl = document.getElementById("parcelas");
 
 // Invest fields containers
 const investFieldsEl = document.getElementById("investFields");
@@ -191,6 +221,9 @@ let currentAddType = null;
 let investKind = "stock"; // "stock" | "cdb"
 let stockMarket = "BR";   // "BR" | "US"
 
+// Despesa payment state
+let despesaModoPagamento = "pix"; // "pix" | "cartao"
+
 /**
  * ==========
  * UI helpers
@@ -206,6 +239,24 @@ function setActiveTypeButton(activeBtn) {
 function showAddForm(show) {
   if (!addFormEl) return;
   addFormEl.style.display = show ? "block" : "none";
+}
+
+function setPaymentUIVisible(isVisible) {
+  if (!payModeWrapEl) return;
+  payModeWrapEl.style.display = isVisible ? "block" : "none";
+}
+
+function setPaymentMode(mode) {
+  despesaModoPagamento = mode;
+
+  if (btnPix) btnPix.classList.toggle("is-selected", mode === "pix");
+  if (btnCartao) btnCartao.classList.toggle("is-selected", mode === "cartao");
+
+  if (installmentsWrapEl) {
+    installmentsWrapEl.style.display = mode === "cartao" ? "block" : "none";
+  }
+
+  if (parcelasEl && mode !== "cartao") parcelasEl.value = "1";
 }
 
 /**
@@ -354,12 +405,17 @@ function toggleAddType(tipo, activeBtn) {
     setActiveTypeButton(null);
     showAddForm(false);
     if (investFieldsEl) investFieldsEl.hidden = true;
+    setPaymentUIVisible(false);
     return;
   }
 
   currentAddType = tipo;
   setActiveTypeButton(activeBtn);
   showAddForm(true);
+
+  // pagamento só para despesa
+  setPaymentUIVisible(tipo === "despesa");
+  if (tipo === "despesa") setPaymentMode("pix");
 
   const isInvest = tipo === "investimento";
   if (investFieldsEl) investFieldsEl.hidden = !isInvest;
@@ -468,9 +524,7 @@ function getCurrentValueForInvestmentRow(row) {
   if (!q?.price) return null;
 
   // BR: quote já em BRL
-  if (row.market !== "US") {
-    return qtd * q.price;
-  }
+  if (row.market !== "US") return qtd * q.price;
 
   // US: quote em USD -> converte para BRL com USD/BRL atual
   const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
@@ -531,7 +585,7 @@ const glowPlugin = {
 
 function computeFilteredRows(allRows) {
   return allRows.filter(r => {
-    const d = clampDate(r.createdAt);
+    const d = clampDate(r.dateRef || r.createdAt); // usa dateRef quando existir
     if (!d) return false;
     if (d.getFullYear() !== selectedYear) return false;
     if (selectedMonth !== "all" && d.getMonth() !== selectedMonth) return false;
@@ -581,7 +635,7 @@ function renderCharts(filteredRows) {
     const byDay = Array.from({ length: daysInMonth }, () => ({ receita: 0, despesa: 0 }));
 
     filteredRows.forEach(r => {
-      const d = clampDate(r.createdAt);
+      const d = clampDate(r.dateRef || r.createdAt);
       if (!d) return;
       const day = d.getDate() - 1;
       if (r.tipo === "receita") byDay[day].receita += r.valor;
@@ -597,7 +651,7 @@ function renderCharts(filteredRows) {
     const byMonthDespesa = Array.from({ length: 12 }, () => 0);
 
     filteredRows.forEach(r => {
-      const d = clampDate(r.createdAt);
+      const d = clampDate(r.dateRef || r.createdAt);
       if (!d) return;
       const m = d.getMonth();
       if (r.tipo === "receita") byMonthReceita[m] += r.valor;
@@ -862,10 +916,69 @@ async function addCurrent() {
     return;
   }
 
+  // Receita / Despesa
   const valor = Number(valorEl?.value || 0);
   if (!Number.isFinite(valor) || valor <= 0) return;
 
-  await addDoc(ref, { descricao, valor, tipo: currentAddType, createdAt: serverTimestamp() });
+  // Base do mês das parcelas: mês atual (hoje)
+  const baseDate = new Date();
+
+  // Despesa: Pix/Cartão + parcelas
+  if (currentAddType === "despesa") {
+    const modo = despesaModoPagamento || "pix";
+
+    if (modo === "cartao") {
+      const parcelas = Math.max(1, Number(parcelasEl?.value || 1) | 0);
+      const values = splitAmount(valor, parcelas);
+      const grupoId = uid();
+
+      for (let i = 0; i < parcelas; i++) {
+        const parcelaNumero = i + 1;
+        const parcelaDate = addMonths(baseDate, i);
+
+        await addDoc(ref, {
+          descricao: `${descricao} (${parcelaNumero}/${parcelas})`,
+          tipo: "despesa",
+          valor: values[i],
+          modoPagamento: "cartao",
+          parcelasTotal: parcelas,
+          parcelaNumero,
+          grupoParcelamentoId: grupoId,
+          dateRef: Timestamp.fromDate(parcelaDate),
+          createdAt: serverTimestamp()
+        });
+      }
+
+      if (descricaoEl) descricaoEl.value = "";
+      if (valorEl) valorEl.value = "";
+      if (parcelasEl) parcelasEl.value = "1";
+      setPaymentMode("pix");
+      return;
+    }
+
+    // Pix
+    await addDoc(ref, {
+      descricao,
+      tipo: "despesa",
+      valor,
+      modoPagamento: "pix",
+      dateRef: Timestamp.fromDate(baseDate),
+      createdAt: serverTimestamp()
+    });
+
+    if (descricaoEl) descricaoEl.value = "";
+    if (valorEl) valorEl.value = "";
+    setPaymentMode("pix");
+    return;
+  }
+
+  // Receita simples
+  await addDoc(ref, {
+    descricao,
+    tipo: "receita",
+    valor,
+    createdAt: serverTimestamp()
+  });
 
   if (descricaoEl) descricaoEl.value = "";
   if (valorEl) valorEl.value = "";
@@ -899,12 +1012,14 @@ if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despes
 if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
 if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
 
+// Pix/Cartão
+if (btnPix) btnPix.addEventListener("click", () => setPaymentMode("pix"));
+if (btnCartao) btnCartao.addEventListener("click", () => setPaymentMode("cartao"));
+
 /**
  * ==========
- * Modal Edit: (único handler) - evita duplicidade
+ * Modal Edit: (único handler)
  * ==========
- * Observação: edita "valor" em BRL (como você salva no Firestore).
- * Para investimentos US, isso altera a base em BRL do lançamento.
  */
 (function wireEditModal() {
   const modal = document.getElementById("modal");
@@ -957,6 +1072,7 @@ if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
  */
 showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
+setPaymentUIVisible(false);
 
 if (yearValue) yearValue.textContent = String(selectedYear);
 if (monthValue) monthValue.textContent = "Todos";
@@ -1009,7 +1125,8 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
       ticker: data.ticker,
       qtdAcoes: Number(data.qtdAcoes || 0),
       precoAcao: Number(data.precoAcao || 0),
-      createdAt: toDateMaybe(data.createdAt)
+      createdAt: toDateMaybe(data.createdAt),
+      dateRef: toDateMaybe(data.dateRef) || null
     });
   });
 
@@ -1019,7 +1136,7 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
-    const d = clampDate(r.createdAt);
+    const d = clampDate(r.dateRef || r.createdAt);
     if (d) years.add(d.getFullYear());
   });
   const sortedYears = Array.from(years).sort((a, b) => b - a);
@@ -1062,29 +1179,13 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
 // Exposto para o pull-to-refresh no mobile
 window.refreshApp = async function refreshApp() {
-  // limpa cache de quotes (força recarregar USD-BRL e tickers)
   try {
     if (typeof quoteCache?.clear === "function") quoteCache.clear();
   } catch {}
 
-  // re-render com quotes forçadas (sem precisar recarregar a página)
   if (window.__ALL_ROWS__) {
     await ensureQuotesThenRerender(window.__ALL_ROWS__);
   } else {
-    // fallback: recarrega se ainda não tem snapshot
     location.reload();
   }
 };
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  Timestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
