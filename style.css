@@ -83,13 +83,15 @@ body{
   background: transparent;
 }
 
-/* Opcional: deixa mais “fino” em áreas específicas com scroll (sidebar e tabela) */
+/* Opcional: deixa mais “fino” em áreas específicas com scroll (sidebar, tabela e dropdown) */
 .sidebar::-webkit-scrollbar,
-.table-wrap::-webkit-scrollbar{
+.table-wrap::-webkit-scrollbar,
+.dd-menu::-webkit-scrollbar{
   width: 9px;
   height: 9px;
 }
 
+/* ====== Layout base ====== */
 .app{ min-height: 100vh; display:flex; }
 
 /* Sidebar */
@@ -295,7 +297,7 @@ body{
   border-color: rgba(255,255,255,.16);
 }
 
-/* ===== Dropdown menu + scrollbar ===== */
+/* Dropdown menu + scrollbar (corrige o "vazamento" do menu) */
 .dd-menu{
   position: absolute;
   left: 0;
@@ -310,7 +312,6 @@ body{
   box-shadow: 0 28px 70px rgba(0,0,0,.55);
   backdrop-filter: blur(10px);
 
-  /* antes: overflow:hidden; agora: scroll vertical quando precisar */
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -452,6 +453,8 @@ body{
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
+  /* importante para não estourar largura no mobile */
+  min-width: 0;
 }
 
 .card-head{
@@ -488,6 +491,7 @@ body{
   padding: 14px 16px 16px;
   position: relative;
   overflow: hidden;
+  min-width: 0; /* evita overflow dentro do grid */
 }
 
 .kpi-head{ display:flex; align-items:center; justify-content: space-between; gap: 10px; }
@@ -532,14 +536,29 @@ body{
 .span-7{ grid-column: span 7; }
 .span-5{ grid-column: span 5; }
 
-.chart-card{ overflow:hidden; }
+.chart-card{ overflow:hidden; min-width: 0; }
 .chart-wrap{ padding: 8px 14px 14px; }
 canvas{ width:100% !important; height: 280px !important; }
 
 /* Table */
-.table-card{ padding: 0 0 10px; }
-.table-wrap{ padding: 0 12px 10px; overflow:auto; -webkit-overflow-scrolling: touch; }
-table{ width:100%; border-collapse: collapse; min-width: 680px; }
+.table-card{ padding: 0 0 10px; min-width: 0; }
+.table-wrap{
+  padding: 0 12px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+table{ border-collapse: collapse; }
+
+/* IMPORTANT: tabelas sem quebra + scroll horizontal */
+thead th,
+tbody td{
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
 
 thead th{
   font-size: 12px;
@@ -622,31 +641,37 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
 
 /* ==========
    MOBILE (prioridade)
-   Ordem desejada:
-   1) Dashboard Financeiro (topbar + KPIs + gráficos)
-   2) Período
-   3) Adicionar lançamento
-   4) Lançamentos (tabela)
+   + corrige vazamento geral (NADA vaza, exceto a tabela)
    ==========
 */
 @media (max-width: 900px){
-  html, body{ overflow-x: hidden; }
+  /* trava qualquer vazamento horizontal no site */
+  html, body{
+    overflow-x: hidden !important;
+    width: 100%;
+    max-width: 100%;
+  }
 
-  /* App vira grid para controlar ordem */
+  /* app vira grid */
   .app{
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
   }
 
-  /* Main: reordena conteúdo interno */
+  /* main reordena */
   .main{
     grid-row: 1;
     display: flex;
     flex-direction: column;
     gap: 12px;
     padding: 14px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .topbar{ order: 1; }
@@ -661,10 +686,13 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     top: auto;
     height: auto;
     width: 100%;
+    max-width: 100%;
     overflow: visible;
     padding: 14px;
     border-right: none;
     border-bottom: 1px solid var(--stroke);
+
+    min-width: 0;
   }
 
   .sidebar{
@@ -697,45 +725,29 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
     font-size: 16px;
   }
 
-  /* Auto-ajuste de largura (NÃO deixa vazar, exceto a tabela) */
-  .app, .sidebar, .main, .card, .chart-card, .table-card{
+  /* tudo deve caber sem estourar */
+  .sidebar-section,
+  .card,
+  .chart-card{
     width: 100%;
     max-width: 100%;
+    min-width: 0;
   }
-}
 
-/* ==========
-   Mobile: somente a tabela de Lançamentos pode “vazar” (scroll horizontal)
-   - Mantém tudo em uma linha e cria scrollbar horizontal
-   ========== */
-@media (max-width: 900px){
+  /* ÚNICA área que pode rolar horizontalmente: table-wrap */
   .table-wrap{
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
     padding: 0 8px 10px !important;
   }
 
-  .table-wrap table,
-  .table-wrap thead,
-  .table-wrap tbody,
-  .table-wrap tr,
-  .table-wrap th,
-  .table-wrap td{
-    white-space: nowrap !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
-  }
-
+  /* força a tabela a ser maior que a tela (sem quebra) */
   .table-wrap table{
-    width: auto !important;
-    min-width: 820px !important; /* ajuste aqui se quiser mais/menos */
-    table-layout: auto !important;
-  }
-
-  html, body{
-    overflow-x: hidden !important;
+    width: max-content;
+    min-width: 820px;
+    table-layout: auto;
   }
 }
 
@@ -749,7 +761,7 @@ tbody tr:hover{ background: rgba(17,24,39,.35); }
   canvas{ height: 200px !important; }
 
   .table-wrap table{
-    min-width: 900px !important;
+    min-width: 900px;
   }
 
   thead th, tbody td{ font-size: 12px; }
