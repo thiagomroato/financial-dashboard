@@ -584,12 +584,33 @@ const glowPlugin = {
 };
 
 function computeFilteredRows(allRows) {
+  // Base de data usada no filtro (parcelas usam dateRef; outros usam createdAt)
+  const getRowDate = (r) => clampDate(r.dateRef || r.createdAt);
+
+  // Se o usuário escolheu "Todos" (ano inteiro):
+  // mantém tudo normal (investimentos aparecem onde foram lançados).
+  if (selectedMonth === "all") {
+    return allRows.filter(r => {
+      const d = getRowDate(r);
+      if (!d) return false;
+      return d.getFullYear() === selectedYear;
+    });
+  }
+
+  // Se escolheu um mês específico:
+  // 1) receitas/despesas entram só se forem do mês filtrado
+  // 2) investimentos entram SEMPRE (mas ainda respeitando o ano selecionado)
   return allRows.filter(r => {
-    const d = clampDate(r.dateRef || r.createdAt); // usa dateRef quando existir
+    const d = getRowDate(r);
     if (!d) return false;
+
+    // respeita o ano sempre
     if (d.getFullYear() !== selectedYear) return false;
-    if (selectedMonth !== "all" && d.getMonth() !== selectedMonth) return false;
-    return true;
+
+    if (r.tipo === "investimento") return true;
+
+    // receita/despesa: filtra por mês
+    return d.getMonth() === selectedMonth;
   });
 }
 
