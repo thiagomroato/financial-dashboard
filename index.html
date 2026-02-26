@@ -303,5 +303,20 @@
       if (e.target === modal) modal.style.display = "none";
     });
   </script>
+  <!-- ===== Pagamento (somente Despesa) ===== -->
+<div id="payModeWrap" style="display:none; margin-top: 10px;">
+  <div class="field">
+    <span class="field-label">Modo de pagamento</span>
+    <div class="btn-group" style="gap:8px;">
+      <button id="btnPix" class="btn" type="button">Pix</button>
+      <button id="btnCartao" class="btn" type="button">Cartão</button>
+    </div>
+  </div>
+
+  <div class="field" id="installmentsWrap" style="display:none;">
+    <span class="field-label">Parcelas</span>
+    <input id="parcelas" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2" value="1" />
+  </div>
+</div>
 </body>
 </html>
