@@ -13,39 +13,47 @@ import {
   Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/**
- * =====================
- * CONFIG (Quotes via Firestore - written by GitHub Actions)
- * =====================
- * Espera docs em: collection "quotes"
- * - docId = ticker (ex: "AAPL", "PETR4.SA")
- * - docId = "USD-BRL" (taxa USD->BRL)
- *
- * Formato esperado:
- * { price: number, updatedAt: Timestamp, source?: string, error?: string }
- */
+// ==============================
+// TOAST NOTIFICATIONS
+// ==============================
+const toastContainer = document.getElementById("toastContainer");
 
-// cache local no browser (só para não ler Firestore toda hora)
-const quoteCache = new Map(); // symbol => { price, updatedAt }
-const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+function showToast(message, type = "info", duration = 3000) {
+  if (!toastContainer) return;
 
-// FX
-const FX_USD_BRL_DOC_ID = "USD-BRL";
+  const icons = { success: "✓", error: "✕", info: "ℹ" };
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] ?? "ℹ"}</span><span>${message}</span>`;
+  toastContainer.appendChild(toast);
 
-/**
- * ==========
- * Helpers
- * ==========
- */
-const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const fmtUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
-function fx(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x) || x <= 0) return "--";
-  return x.toFixed(4);
+  setTimeout(() => {
+    toast.classList.add("removing");
+    toast.addEventListener("animationend", () => toast.remove(), { once: true });
+  }, duration);
 }
 
+// ==============================
+// CONFIG / CACHE
+// ==============================
+const quoteCache = new Map(); // symbol => { price, updatedAt }
+const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+const FX_USD_BRL_DOC_ID = "USD-BRL";
+
+// ==============================
+// FORMATTERS
+// ==============================
+const fmtBRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const fmtUSD = new Intl.NumberFormat("en-US",  { style: "currency", currency: "USD" });
+
+const brl  = (n) => fmtBRL.format(Number.isFinite(Number(n)) ? Number(n) : 0);
+const usd  = (n) => fmtUSD.format(Number.isFinite(Number(n)) ? Number(n) : 0);
+const pct  = (n) => `${(Number.isFinite(Number(n)) ? Number(n) * 100 : 0).toFixed(2)}%`;
+const fx   = (n) => { const x = Number(n); return Number.isFinite(x) && x > 0 ? x.toFixed(4) : "--"; };
+
+// ==============================
+// DATE / TICKER HELPERS
+// ==============================
 function toDateMaybe(ts) {
   if (!ts) return null;
   if (ts instanceof Date) return ts;
@@ -55,22 +63,6 @@ function toDateMaybe(ts) {
 
 function clampDate(d) {
   return d instanceof Date && !isNaN(d) ? d : null;
-}
-
-function brl(n) {
-  const x = Number(n || 0);
-  return fmtBRL.format(Number.isFinite(x) ? x : 0);
-}
-
-function usd(n) {
-  const x = Number(n || 0);
-  return fmtUSD.format(Number.isFinite(x) ? x : 0);
-}
-
-function pct(n) {
-  const x = Number(n || 0);
-  if (!Number.isFinite(x)) return "0%";
-  return `${(x * 100).toFixed(2)}%`;
 }
 
 function normalizeTicker(raw) {
@@ -84,12 +76,10 @@ function isBrazilLikeTicker(ticker) {
 function toQuoteDocIdCandidates(rawTicker) {
   const t = normalizeTicker(rawTicker);
   if (!t) return [];
-
   if (isBrazilLikeTicker(t)) {
     const withSA = t.endsWith(".SA") ? t : `${t}.SA`;
     return Array.from(new Set([withSA, t]));
   }
-
   return Array.from(new Set([t, `${t}.SA`]));
 }
 
@@ -100,22 +90,20 @@ function usdToBrl(usdValue, usdBrl) {
   return u * fxRate;
 }
 
-// Parcelamento helpers
+// Installments helpers
 function addMonths(date, months) {
   const d = new Date(date);
   const day = d.getDate();
   d.setMonth(d.getMonth() + months);
-  // Ajuste para meses com menos dias (ex: 31 -> 30/28)
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
 
 function splitAmount(total, parts) {
   const cents = Math.round(Number(total) * 100);
-  const base = Math.floor(cents / parts);
-  const rem = cents % parts;
-  const arr = Array.from({ length: parts }, (_, i) => base + (i < rem ? 1 : 0));
-  return arr.map(c => c / 100);
+  const base  = Math.floor(cents / parts);
+  const rem   = cents % parts;
+  return Array.from({ length: parts }, (_, i) => (base + (i < rem ? 1 : 0)) / 100);
 }
 
 function uid() {
@@ -127,112 +115,92 @@ const monthNames = [
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
 
-/**
- * ==========
- * DOM refs
- * ==========
- */
-const tabela = document.getElementById("tabela");
-const saldoEl = document.getElementById("saldo");
-const receitasEl = document.getElementById("receitas");
-const despesasEl = document.getElementById("despesas");
+// ==============================
+// DOM REFS
+// ==============================
+const tabela          = document.getElementById("tabela");
+const saldoEl         = document.getElementById("saldo");
+const receitasEl      = document.getElementById("receitas");
+const despesasEl      = document.getElementById("despesas");
 const investimentosEl = document.getElementById("investimentos");
+const receitasCount   = document.getElementById("receitasCount");
+const despesasCount   = document.getElementById("despesasCount");
+const investCount     = document.getElementById("investCount");
+const tableCountEl    = document.getElementById("tableCount");
 
-const modalEl = document.getElementById("modal");
+const modalEl         = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
-const editValorEl = document.getElementById("editValor");
+const editValorEl     = document.getElementById("editValor");
+const addFormEl       = document.getElementById("addForm");
 
-const addFormEl = document.getElementById("addForm");
+const descricaoEl     = document.getElementById("descricao");
+const valorEl         = document.getElementById("valor");
 
-// Inputs
-const descricaoEl = document.getElementById("descricao");
-const valorEl = document.getElementById("valor");
-
-// Pagamento (Despesa)
-const payModeWrapEl = document.getElementById("payModeWrap");
-const btnPix = document.getElementById("btnPix");
-const btnCartao = document.getElementById("btnCartao");
+const payModeWrapEl     = document.getElementById("payModeWrap");
+const btnPix            = document.getElementById("btnPix");
+const btnCartao         = document.getElementById("btnCartao");
 const installmentsWrapEl = document.getElementById("installmentsWrap");
-const parcelasEl = document.getElementById("parcelas");
+const parcelasEl        = document.getElementById("parcelas");
 
-// Invest fields containers
 const investFieldsEl = document.getElementById("investFields");
-const stockFieldsEl = document.getElementById("stockFields");
-const cdbFieldsEl = document.getElementById("cdbFields");
-const investTotalEl = document.getElementById("investTotal");
+const stockFieldsEl  = document.getElementById("stockFields");
+const cdbFieldsEl    = document.getElementById("cdbFields");
+const investTotalEl  = document.getElementById("investTotal");
 
-// Stock inputs
-const tickerEl = document.getElementById("ticker");
-const qtdAcoesEl = document.getElementById("qtdAcoes");
+const tickerEl    = document.getElementById("ticker");
+const qtdAcoesEl  = document.getElementById("qtdAcoes");
 const precoAcaoEl = document.getElementById("precoAcao");
-
-// CDB input
 const cdbPctCdiEl = document.getElementById("cdbPctCdi");
 
-// InvestKind DD
-const investKindDD = document.getElementById("investKindDD");
-const investKindBtn = document.getElementById("investKindBtn");
-const investKindMenu = document.getElementById("investKindMenu");
+const investKindDD    = document.getElementById("investKindDD");
+const investKindBtn   = document.getElementById("investKindBtn");
+const investKindMenu  = document.getElementById("investKindMenu");
 const investKindValue = document.getElementById("investKindValue");
 
-// StockMarket DD
-const stockMarketDD = document.getElementById("stockMarketDD");
-const stockMarketBtn = document.getElementById("stockMarketBtn");
-const stockMarketMenu = document.getElementById("stockMarketMenu");
+const stockMarketDD    = document.getElementById("stockMarketDD");
+const stockMarketBtn   = document.getElementById("stockMarketBtn");
+const stockMarketMenu  = document.getElementById("stockMarketMenu");
 const stockMarketValue = document.getElementById("stockMarketValue");
 
-// Botões
 const btnReceita = document.getElementById("btnReceita");
 const btnDespesa = document.getElementById("btnDespesa");
-const btnInvest = document.getElementById("btnInvest");
-const btnAdd = document.getElementById("btnAdd");
+const btnInvest  = document.getElementById("btnInvest");
+const btnAdd     = document.getElementById("btnAdd");
 
-// Dropdown (Ano/Mês)
-const yearDD = document.getElementById("yearDD");
-const yearMenu = document.getElementById("yearMenu");
+const yearDD    = document.getElementById("yearDD");
+const yearMenu  = document.getElementById("yearMenu");
 const yearValue = document.getElementById("yearValue");
-const yearBtn = document.getElementById("yearBtn");
+const yearBtn   = document.getElementById("yearBtn");
 
-const monthDD = document.getElementById("monthDD");
-const monthMenu = document.getElementById("monthMenu");
+const monthDD    = document.getElementById("monthDD");
+const monthMenu  = document.getElementById("monthMenu");
 const monthValue = document.getElementById("monthValue");
-const monthBtn = document.getElementById("monthBtn");
+const monthBtn   = document.getElementById("monthBtn");
 
 const clearFiltersBtn = document.getElementById("clearFilters");
 
-/**
- * ==========
- * Firestore
- * ==========
- */
+// ==============================
+// FIRESTORE
+// ==============================
 const ref = collection(db, "transactions");
 let editId = null;
 
-/**
- * ==========
- * State
- * ==========
- */
+// ==============================
+// STATE
+// ==============================
 let selectedYear = new Date().getFullYear();
 let selectedMonth = "all";
 let currentAddType = null;
+let investKind = "stock";
+let stockMarket = "BR";
+let despesaModoPagamento = "pix";
 
-// Invest state
-let investKind = "stock"; // "stock" | "cdb"
-let stockMarket = "BR";   // "BR" | "US"
-
-// Despesa payment state
-let despesaModoPagamento = "pix"; // "pix" | "cartao"
-
-/**
- * ==========
- * UI helpers
- * ==========
- */
+// ==============================
+// UI HELPERS
+// ==============================
 function setActiveTypeButton(activeBtn) {
   [btnReceita, btnDespesa, btnInvest].forEach(b => {
-    if (!b) return;
-    b.classList.toggle("is-selected", b === activeBtn);
+    if (b) b.classList.toggle("is-selected", b === activeBtn);
   });
 }
 
@@ -242,42 +210,28 @@ function showAddForm(show) {
 }
 
 function setPaymentUIVisible(isVisible) {
-  if (!payModeWrapEl) return;
-  payModeWrapEl.style.display = isVisible ? "block" : "none";
+  if (payModeWrapEl) payModeWrapEl.style.display = isVisible ? "block" : "none";
 }
 
 function setPaymentMode(mode) {
   despesaModoPagamento = mode;
-
-  if (btnPix) btnPix.classList.toggle("is-selected", mode === "pix");
+  if (btnPix)    btnPix.classList.toggle("is-selected", mode === "pix");
   if (btnCartao) btnCartao.classList.toggle("is-selected", mode === "cartao");
-
   if (installmentsWrapEl) {
     installmentsWrapEl.style.display = mode === "cartao" ? "block" : "none";
   }
-
   if (parcelasEl && mode !== "cartao") parcelasEl.value = "1";
 }
 
-/**
- * Total automático (AÇÕES)
- * - BR: total em BRL
- * - US: mostra "total" convertido para BRL usando a taxa do cache (se existir)
- */
 function getInvestTotalStock() {
-  const qtd = Number(qtdAcoesEl?.value || 0);
+  const qtd   = Number(qtdAcoesEl?.value || 0);
   const preco = Number(precoAcaoEl?.value || 0);
-
-  const q = Number.isFinite(qtd) ? qtd : 0;
+  const q = Number.isFinite(qtd)   ? qtd   : 0;
   const p = Number.isFinite(preco) ? preco : 0;
-
-  const raw = q * p; // BRL (BR) ou USD (US)
-
+  const raw = q * p;
   if (stockMarket !== "US") return raw;
-
   const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-  const converted = usdToBrl(raw, fxRate);
-  return converted ?? 0;
+  return usdToBrl(raw, fxRate) ?? 0;
 }
 
 function updateInvestTotalUIStock() {
@@ -294,17 +248,14 @@ function updateInvestTotalUICdb() {
 function applyInvestKindUI() {
   const isStock = investKind === "stock";
   if (stockFieldsEl) stockFieldsEl.hidden = !isStock;
-  if (cdbFieldsEl) cdbFieldsEl.hidden = isStock;
-
+  if (cdbFieldsEl)   cdbFieldsEl.hidden = isStock;
   if (isStock) updateInvestTotalUIStock();
   else updateInvestTotalUICdb();
 }
 
-/**
- * ==========
- * Dropdown custom (Ano/Mês + Invest)
- * ==========
- */
+// ==============================
+// DROPDOWN HELPERS
+// ==============================
 function setDDOpen(dd, open) {
   if (!dd) return;
   dd.classList.toggle("is-open", open);
@@ -327,12 +278,10 @@ function buildMenu(menuEl, items, activeValue, onPick) {
 
 function wireDropdown(dd, btnEl, setOpen) {
   if (!dd || !btnEl) return;
-
   btnEl.addEventListener("click", (e) => {
     e.stopPropagation();
     setOpen(!dd.classList.contains("is-open"));
   });
-
   document.addEventListener("click", () => setOpen(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 }
@@ -342,7 +291,6 @@ function setupInvestDropdownsOnce() {
   if (investDDSetupDone) return;
   investDDSetupDone = true;
 
-  // Open/close
   wireDropdown(investKindDD, investKindBtn, (open) => {
     setDDOpen(investKindDD, open);
     setDDOpen(stockMarketDD, false);
@@ -353,13 +301,9 @@ function setupInvestDropdownsOnce() {
     setDDOpen(investKindDD, false);
   });
 
-  // Menus
   buildMenu(
     investKindMenu,
-    [
-      { value: "stock", label: "Ação" },
-      { value: "cdb", label: "CDB" }
-    ],
+    [{ value: "stock", label: "Ação" }, { value: "cdb", label: "CDB" }],
     investKind,
     (value, label) => {
       investKind = String(value);
@@ -371,33 +315,25 @@ function setupInvestDropdownsOnce() {
 
   buildMenu(
     stockMarketMenu,
-    [
-      { value: "BR", label: "Brasil (BRL)" },
-      { value: "US", label: "EUA (USD)" }
-    ],
+    [{ value: "BR", label: "Brasil (BRL)" }, { value: "US", label: "EUA (USD)" }],
     stockMarket,
     (value, label) => {
       stockMarket = String(value);
       if (stockMarketValue) stockMarketValue.textContent = label;
       setDDOpen(stockMarketDD, false);
-
-      // ao trocar BR/US, recalcula preview do total
       if (investKind === "stock") updateInvestTotalUIStock();
     }
   );
 
-  // Valores iniciais
-  if (investKindValue) investKindValue.textContent = investKind === "stock" ? "Ação" : "CDB";
+  if (investKindValue)  investKindValue.textContent  = investKind === "stock" ? "Ação" : "CDB";
   if (stockMarketValue) stockMarketValue.textContent = stockMarket === "BR" ? "Brasil (BRL)" : "EUA (USD)";
 }
 
-/**
- * Toggle tipo:
- * - Clicar abre
- * - Clicar no mesmo fecha
- */
+// ==============================
+// TOGGLE ADD TYPE
+// ==============================
 function toggleAddType(tipo, activeBtn) {
-  const isOpen = addFormEl ? addFormEl.style.display !== "none" : false;
+  const isOpen    = addFormEl ? addFormEl.style.display !== "none" : false;
   const isSameType = currentAddType === tipo;
 
   if (isOpen && isSameType) {
@@ -412,8 +348,6 @@ function toggleAddType(tipo, activeBtn) {
   currentAddType = tipo;
   setActiveTypeButton(activeBtn);
   showAddForm(true);
-
-  // pagamento só para despesa
   setPaymentUIVisible(tipo === "despesa");
   if (tipo === "despesa") setPaymentMode("pix");
 
@@ -424,33 +358,43 @@ function toggleAddType(tipo, activeBtn) {
     setupInvestDropdownsOnce();
     applyInvestKindUI();
   }
+
+  // Focus first input
+  setTimeout(() => {
+    const firstInput = addFormEl?.querySelector("input:not([type=hidden])");
+    if (firstInput) firstInput.focus();
+  }, 50);
 }
 
-// total UI events
-if (qtdAcoesEl) qtdAcoesEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
+// Live total updates
+if (qtdAcoesEl)  qtdAcoesEl.addEventListener("input",  () => investKind === "stock" && updateInvestTotalUIStock());
 if (precoAcaoEl) precoAcaoEl.addEventListener("input", () => investKind === "stock" && updateInvestTotalUIStock());
-if (valorEl) valorEl.addEventListener("input", () => investKind === "cdb" && updateInvestTotalUICdb());
+if (valorEl)     valorEl.addEventListener("input",     () => investKind === "cdb"   && updateInvestTotalUICdb());
 
-/**
- * ==========
- * Quotes (from Firestore)
- * ==========
- */
+// Ticker uppercase auto
+if (tickerEl) {
+  tickerEl.addEventListener("input", () => {
+    const pos = tickerEl.selectionStart;
+    tickerEl.value = tickerEl.value.toUpperCase();
+    tickerEl.setSelectionRange(pos, pos);
+  });
+}
+
+// ==============================
+// QUOTES (from Firestore)
+// ==============================
 async function fetchQuoteFromFirestore(docId) {
   const snap = await getDoc(doc(db, "quotes", docId));
   if (!snap.exists()) return null;
-
   const data = snap.data();
   const price = Number(data?.price);
   if (!Number.isFinite(price) || price <= 0) return null;
-
   return { price, updatedAt: Date.now() };
 }
 
 async function fetchQuoteSmart(rawTicker, { force = false } = {}) {
   const candidates = toQuoteDocIdCandidates(rawTicker);
   if (!candidates.length) return null;
-
   const now = Date.now();
 
   if (!force) {
@@ -474,15 +418,10 @@ async function fetchQuoteSmart(rawTicker, { force = false } = {}) {
 }
 
 async function ensureUsdBrlQuote({ force = false } = {}) {
-  try {
-    await fetchQuoteSmart(FX_USD_BRL_DOC_ID, { force });
-  } catch {
-    // ignore
-  }
+  try { await fetchQuoteSmart(FX_USD_BRL_DOC_ID, { force }); } catch {}
 }
 
 async function updateQuotesForInvestments(rows, { force = false } = {}) {
-  // sempre tenta carregar USD/BRL (necessário para ações US)
   await ensureUsdBrlQuote({ force });
 
   const tickers = Array.from(new Set(
@@ -511,61 +450,34 @@ function getCachedQuoteForTicker(rawTicker) {
 }
 
 function getCurrentValueForInvestmentRow(row) {
-  if (row.tipo !== "investimento") return null;
-  if (row.investKind === "cdb") return null;
-
+  if (row.tipo !== "investimento" || row.investKind === "cdb") return null;
   const qtd = Number(row.qtdAcoes || 0);
   if (!Number.isFinite(qtd) || qtd <= 0) return null;
-
   const t = normalizeTicker(row.ticker);
   if (!t) return null;
-
   const q = getCachedQuoteForTicker(t);
   if (!q?.price) return null;
-
-  // BR: quote já em BRL
   if (row.market !== "US") return qtd * q.price;
-
-  // US: quote em USD -> converte para BRL com USD/BRL atual
   const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-  const currentUsd = qtd * q.price;
-  const currentBrl = usdToBrl(currentUsd, fxRate);
-  return currentBrl;
+  return usdToBrl(qtd * q.price, fxRate);
 }
 
-/**
- * ==========
- * Charts
- * ==========
- */
+// ==============================
+// CHARTS
+// ==============================
 let lineChart = null;
-let pieChart = null;
+let pieChart  = null;
 
 function destroyCharts() {
   if (lineChart) { lineChart.destroy(); lineChart = null; }
-  if (pieChart) { pieChart.destroy(); pieChart = null; }
+  if (pieChart)  { pieChart.destroy();  pieChart  = null; }
 }
 
 function chartDefaults() {
   if (typeof Chart === "undefined") return;
-  Chart.defaults.color = "rgba(229,231,235,.62)";
-  Chart.defaults.font.family =
-    'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-}
-
-function makeGlowDataset(baseColor, data, label) {
-  return {
-    label,
-    data,
-    borderColor: baseColor,
-    backgroundColor: baseColor.replace("1)", "0.22)"),
-    borderWidth: 2,
-    pointRadius: 3,
-    pointHoverRadius: 4,
-    pointBackgroundColor: baseColor,
-    tension: 0.35,
-    fill: true
-  };
+  Chart.defaults.color      = "rgba(232,234,240,.55)";
+  Chart.defaults.font.family = "'DM Sans', ui-sans-serif, system-ui, sans-serif";
+  Chart.defaults.font.size   = 11;
 }
 
 const glowPlugin = {
@@ -573,60 +485,39 @@ const glowPlugin = {
   beforeDatasetsDraw(chart) {
     const { ctx } = chart;
     ctx.save();
-    ctx.shadowColor = "rgba(109,124,255,.25)";
-    ctx.shadowBlur = 14;
+    ctx.shadowColor  = "rgba(124,143,255,.2)";
+    ctx.shadowBlur   = 12;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 6;
+    ctx.shadowOffsetY = 4;
   },
-  afterDatasetsDraw(chart) {
-    chart.ctx.restore();
-  }
+  afterDatasetsDraw(chart) { chart.ctx.restore(); }
 };
 
 function computeFilteredRows(allRows) {
-  // Parcelas usam dateRef; resto usa createdAt
   const getRowDate = (r) => clampDate(r.dateRef || r.createdAt);
 
-  // Ano inteiro (Mês = "Todos"): comportamento normal
   if (selectedMonth === "all") {
     return allRows.filter(r => {
       const d = getRowDate(r);
-      if (!d) return false;
-      return d.getFullYear() === selectedYear;
+      return d && d.getFullYear() === selectedYear;
     });
   }
 
-  // Mês específico:
-  // - investimentos entram sempre (respeitando o ano)
-  // - receita/despesa só entram se forem do mês
   return allRows.filter(r => {
     const d = getRowDate(r);
-    if (!d) return false;
-
-    if (d.getFullYear() !== selectedYear) return false;
-
+    if (!d || d.getFullYear() !== selectedYear) return false;
     if (r.tipo === "investimento") return true;
-
     return d.getMonth() === selectedMonth;
   });
 }
 
 function sumInvestmentsValue(rows) {
-  let total = 0;
-
-  rows.forEach(r => {
-    if (r.tipo !== "investimento") return;
-
-    if (r.investKind === "cdb") {
-      total += Number(r.valor || 0);
-      return;
-    }
-
+  return rows.reduce((acc, r) => {
+    if (r.tipo !== "investimento") return acc;
+    if (r.investKind === "cdb") return acc + Number(r.valor || 0);
     const atual = getCurrentValueForInvestmentRow(r);
-    total += (atual != null ? atual : Number(r.valor || 0));
-  });
-
-  return total;
+    return acc + (atual != null ? atual : Number(r.valor || 0));
+  }, 0);
 }
 
 function renderCharts(filteredRows) {
@@ -634,24 +525,20 @@ function renderCharts(filteredRows) {
   chartDefaults();
 
   const lineCtx = document.getElementById("barChart");
-  const pieCtx = document.getElementById("pieChart");
+  const pieCtx  = document.getElementById("pieChart");
   if (!lineCtx || !pieCtx) return;
 
-  const blue = "rgba(109,124,255,1)";
-  const pink = "rgba(217,70,239,1)";
+  const blue   = "rgba(124,143,255,1)";
+  const pinkFx = "rgba(248,113,113,1)";
+  const green  = "rgba(52,211,153,1)";
 
-  let labels = [];
-  let receitaSeries = [];
-  let despesaSeries = [];
-
+  let labels = [], receitaSeries = [], despesaSeries = [];
   const hasFixedMonth = selectedMonth !== "all";
 
   if (hasFixedMonth) {
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
-
     const byDay = Array.from({ length: daysInMonth }, () => ({ receita: 0, despesa: 0 }));
-
     filteredRows.forEach(r => {
       const d = clampDate(r.dateRef || r.createdAt);
       if (!d) return;
@@ -659,15 +546,12 @@ function renderCharts(filteredRows) {
       if (r.tipo === "receita") byDay[day].receita += r.valor;
       if (r.tipo === "despesa") byDay[day].despesa += r.valor;
     });
-
     receitaSeries = byDay.map(x => x.receita);
     despesaSeries = byDay.map(x => x.despesa);
   } else {
-    labels = monthNames.map(m => m.slice(0, 3).toLowerCase());
-
+    labels = monthNames.map(m => m.slice(0, 3));
     const byMonthReceita = Array.from({ length: 12 }, () => 0);
     const byMonthDespesa = Array.from({ length: 12 }, () => 0);
-
     filteredRows.forEach(r => {
       const d = clampDate(r.dateRef || r.createdAt);
       if (!d) return;
@@ -675,7 +559,6 @@ function renderCharts(filteredRows) {
       if (r.tipo === "receita") byMonthReceita[m] += r.valor;
       if (r.tipo === "despesa") byMonthDespesa[m] += r.valor;
     });
-
     receitaSeries = byMonthReceita;
     despesaSeries = byMonthDespesa;
   }
@@ -690,16 +573,73 @@ function renderCharts(filteredRows) {
 
   destroyCharts();
 
+  const makeDataset = (color, data, label) => ({
+    label,
+    data,
+    borderColor: color,
+    backgroundColor: color.replace("1)", "0.12)"),
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    pointBackgroundColor: color,
+    pointBorderColor: "rgba(6,8,16,.8)",
+    pointBorderWidth: 1.5,
+    tension: 0.4,
+    fill: true
+  });
+
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 500, easing: "easeOutQuart" }
+  };
+
+  const gridColor = "rgba(255,255,255,.05)";
+  const axisColor = "rgba(232,234,240,.3)";
+
   lineChart = new Chart(lineCtx, {
     type: "line",
     data: {
       labels,
       datasets: [
-        makeGlowDataset(blue, receitaSeries, "Receita"),
-        makeGlowDataset(pink, despesaSeries, "Despesa")
+        makeDataset(blue, receitaSeries, "Receita"),
+        makeDataset(pinkFx, despesaSeries, "Despesa")
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false },
+    options: {
+      ...commonOptions,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: "rgba(12,17,30,.95)",
+          borderColor: "rgba(255,255,255,.1)",
+          borderWidth: 1,
+          padding: 10,
+          titleFont: { size: 11, weight: "700" },
+          bodyFont: { size: 11 },
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${brl(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: { color: axisColor, font: { size: 10 } }
+        },
+        y: {
+          grid: { color: gridColor },
+          ticks: {
+            color: axisColor,
+            font: { size: 10 },
+            callback: (v) => brl(v)
+          }
+        }
+      }
+    },
     plugins: [glowPlugin]
   });
 
@@ -710,97 +650,119 @@ function renderCharts(filteredRows) {
       datasets: [{
         data: [receitas, despesas, investimentosTotal],
         backgroundColor: [
-          "rgba(109,124,255,0.9)",
-          "rgba(245,158,11,0.9)",
-          "rgba(168,85,247,0.9)"
+          "rgba(124,143,255,.85)",
+          "rgba(248,113,113,.85)",
+          "rgba(192,132,252,.85)"
         ],
-        borderColor: "rgba(15,23,42,.9)",
-        borderWidth: 3
+        borderColor: "rgba(6,8,16,.9)",
+        borderWidth: 3,
+        hoverOffset: 6
       }]
     },
-    options: { responsive: true, maintainAspectRatio: false, cutout: "68%" }
+    options: {
+      ...commonOptions,
+      cutout: "68%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            padding: 14,
+            font: { size: 11, weight: "600" },
+            color: "rgba(232,234,240,.6)",
+            usePointStyle: true,
+            pointStyleWidth: 8
+          }
+        },
+        tooltip: {
+          backgroundColor: "rgba(12,17,30,.95)",
+          borderColor: "rgba(255,255,255,.1)",
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ${brl(ctx.parsed)}`
+          }
+        }
+      }
+    }
   });
 }
 
-/**
- * ==========
- * Table + KPIs
- * ==========
- */
+// ==============================
+// TABLE + KPIs
+// ==============================
 function renderTableAndKpis(filteredRows) {
   if (!tabela) return;
 
-  let receitas = 0, despesas = 0;
+  let receitas  = 0, despesas = 0;
+  let nReceitas = 0, nDespesas = 0, nInvest = 0;
   const investimentosTotal = sumInvestmentsValue(filteredRows);
 
   tabela.innerHTML = "";
 
+  if (filteredRows.length === 0) {
+    const colspan = 4;
+    tabela.innerHTML = `
+      <tr>
+        <td colspan="${colspan}">
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">Nenhum lançamento no período selecionado.</div>
+          </div>
+        </td>
+      </tr>`;
+  }
+
   filteredRows.forEach(r => {
-    if (r.tipo === "receita") receitas += r.valor;
-    if (r.tipo === "despesa") despesas += r.valor;
+    if (r.tipo === "receita")      { receitas  += r.valor; nReceitas++; }
+    if (r.tipo === "despesa")      { despesas  += r.valor; nDespesas++; }
+    if (r.tipo === "investimento") { nInvest++; }
 
     const tr = document.createElement("tr");
+    tr.classList.add("animate-in");
 
-    let valorAtual = null;
-    let pl = null;
-    let plPct = null;
-    let quoteLine = `<span class="muted">Cotação: --</span>`;
+    let valorAtual = null, pl = null, plPct = null;
+    let quoteLine  = `<span class="muted">Cotação: —</span>`;
 
-    const isStockInvestment = r.tipo === "investimento" && r.investKind !== "cdb";
+    const isStockInvest = r.tipo === "investimento" && r.investKind !== "cdb";
 
-    if (isStockInvestment && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
+    if (isStockInvest && r.ticker && Number.isFinite(r.qtdAcoes) && r.qtdAcoes > 0) {
       const q = getCachedQuoteForTicker(r.ticker);
-
       if (q?.price) {
-        // valorAtual sempre em BRL
         valorAtual = getCurrentValueForInvestmentRow(r);
-
-        // P/L e % com base no investido em REAL (r.valor)
         const investedBRL = Number(r.valor || 0);
-        pl = (valorAtual == null ? null : (valorAtual - investedBRL));
-        plPct = (pl != null && investedBRL > 0) ? (pl / investedBRL) : null;
+        pl    = valorAtual != null ? valorAtual - investedBRL : null;
+        plPct = pl != null && investedBRL > 0 ? pl / investedBRL : null;
 
-        if (r.market === "US") {
-          const fxNow = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-          quoteLine = `<span>Cotação (${normalizeTicker(r.ticker)}): ${usd(q.price)} | USD/BRL: ${fx(fxNow)}</span>`;
-        } else {
-          quoteLine = `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
-        }
+        quoteLine = r.market === "US"
+          ? `<span>Cotação (${normalizeTicker(r.ticker)}): ${usd(q.price)} | USD/BRL: ${fx(quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null)}</span>`
+          : `<span>Cotação (${q.symbol}): ${brl(q.price)}</span>`;
       }
     }
 
-    const desc =
-      r.tipo === "investimento"
-        ? (r.investKind === "cdb"
-            ? `${r.descricao ?? ""} — CDB ${Number(r.cdbPctCdi || 0)}% do CDI`
-            : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${r.market === "US" ? usd(r.precoAcao ?? 0) : brl(r.precoAcao ?? 0)} ${r.market === "US" ? "(USD)" : "(BRL)"}`
-          )
-        : (r.descricao ?? "");
+    // Description text
+    const desc = r.tipo === "investimento"
+      ? (r.investKind === "cdb"
+          ? `${r.descricao ?? ""} — CDB ${Number(r.cdbPctCdi || 0)}% CDI`
+          : `${r.descricao ?? ""}${r.ticker ? ` (${normalizeTicker(r.ticker)})` : ""} — ${r.qtdAcoes ?? 0} × ${r.market === "US" ? usd(r.precoAcao ?? 0) : brl(r.precoAcao ?? 0)} ${r.market === "US" ? "USD" : "BRL"}`)
+      : (r.descricao ?? "");
 
+    // Value cell
     const valorCell = r.tipo === "investimento"
       ? (r.investKind === "cdb"
           ? `<div class="val-col">
-              <div class="val-main">${brl(r.valor)}</div>
-              <div class="val-sub"><span class="muted">CDB</span><span class="muted">${Number(r.cdbPctCdi || 0)}% CDI</span></div>
-            </div>`
-          : `
-            <div class="val-col">
-              <div class="val-main">
-                Investido: ${
-                  r.market === "US" && Number.isFinite(r.valorUSD) && r.valorUSD > 0
-                    ? usd(r.valorUSD)
-                    : brl(r.valor)
-                }
-              </div>
-
-              <div class="val-sub">${quoteLine}</div>
-
-              <div class="val-sub">
-                ${valorAtual == null ? `<span class="muted">Atual: --</span>` : `<span>Atual: ${brl(valorAtual)}</span>`}
-                ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}"> P/L: ${brl(pl)}${plPct == null ? "" : ` (${pct(plPct)})`}</span>`}
-              </div>
-            </div>
-          `)
+               <div class="val-main">${brl(r.valor)}</div>
+               <div class="val-sub"><span class="muted">CDB ${Number(r.cdbPctCdi || 0)}% CDI</span></div>
+             </div>`
+          : `<div class="val-col">
+               <div class="val-main">Investido: ${r.market === "US" && Number.isFinite(r.valorUSD) && r.valorUSD > 0 ? usd(r.valorUSD) : brl(r.valor)}</div>
+               <div class="val-sub">${quoteLine}</div>
+               <div class="val-sub">
+                 ${valorAtual == null
+                   ? `<span class="muted">Atual: —</span>`
+                   : `<span>Atual: ${brl(valorAtual)}</span>`}
+                 ${pl == null ? "" : `<span class="pl ${pl >= 0 ? "pl-pos" : "pl-neg"}">P/L: ${brl(pl)}${plPct != null ? ` (${pct(plPct)})` : ""}</span>`}
+               </div>
+             </div>`)
       : brl(r.valor);
 
     tr.innerHTML = `
@@ -808,32 +770,42 @@ function renderTableAndKpis(filteredRows) {
       <td><span class="type-pill type-${r.tipo}">${r.tipo}</span></td>
       <td>${valorCell}</td>
       <td>
-        <button class="action-btn edit" type="button">Editar</button>
-        <button class="action-btn delete" type="button">Excluir</button>
-      </td>
-    `;
+        <button class="action-btn edit" type="button" aria-label="Editar">Editar</button>
+        <button class="action-btn delete" type="button" aria-label="Excluir">Excluir</button>
+      </td>`;
 
-    const delBtn = tr.querySelector(".delete");
-    if (delBtn) delBtn.onclick = () => deleteDoc(doc(db, "transactions", r.id));
+    tr.querySelector(".delete").onclick = async () => {
+      if (!confirm(`Excluir "${r.descricao}"?`)) return;
+      try {
+        await deleteDoc(doc(db, "transactions", r.id));
+        showToast("Lançamento excluído.", "success");
+      } catch (e) {
+        showToast("Falha ao excluir.", "error");
+      }
+    };
 
-    const editBtn = tr.querySelector(".edit");
-    if (editBtn) {
-      editBtn.onclick = () => {
-        if (!modalEl) return;
-        modalEl.style.display = "flex";
-        if (editDescricaoEl) editDescricaoEl.value = r.descricao ?? "";
-        if (editValorEl) editValorEl.value = Number(r.valor || 0);
-        editId = r.id;
-      };
-    }
+    tr.querySelector(".edit").onclick = () => {
+      if (!modalEl) return;
+      modalEl.classList.add("is-open");
+      if (editDescricaoEl) editDescricaoEl.value = r.descricao ?? "";
+      if (editValorEl)     editValorEl.value     = Number(r.valor || 0);
+      editId = r.id;
+      setTimeout(() => editDescricaoEl?.focus(), 50);
+    };
 
     tabela.appendChild(tr);
   });
 
-  if (saldoEl) saldoEl.innerText = brl(receitas - despesas);
-  if (receitasEl) receitasEl.innerText = brl(receitas);
-  if (despesasEl) despesasEl.innerText = brl(despesas);
+  // Update KPIs
+  if (saldoEl)         saldoEl.innerText         = brl(receitas - despesas);
+  if (receitasEl)      receitasEl.innerText      = brl(receitas);
+  if (despesasEl)      despesasEl.innerText      = brl(despesas);
   if (investimentosEl) investimentosEl.innerText = brl(investimentosTotal);
+
+  if (receitasCount) receitasCount.textContent = `${nReceitas} lançamento${nReceitas !== 1 ? "s" : ""}`;
+  if (despesasCount) despesasCount.textContent = `${nDespesas} lançamento${nDespesas !== 1 ? "s" : ""}`;
+  if (investCount)   investCount.textContent   = `${nInvest} posição${nInvest !== 1 ? "ões" : ""}`;
+  if (tableCountEl)  tableCountEl.textContent  = `${filteredRows.length} registro${filteredRows.length !== 1 ? "s" : ""}`;
 }
 
 function renderAll(allRows) {
@@ -842,171 +814,154 @@ function renderAll(allRows) {
   renderCharts(filteredRows);
 }
 
-/**
- * ==========
- * Add
- * ==========
- */
+// ==============================
+// ADD TRANSACTION
+// ==============================
+function resetAddForm() {
+  if (descricaoEl) descricaoEl.value = "";
+  if (valorEl)     valorEl.value = "";
+}
+
 async function addCurrent() {
   const descricao = (descricaoEl?.value || "").trim();
-  if (!descricao || !currentAddType) return;
-
-  if (currentAddType === "investimento") {
-    if (investKind === "stock") {
-      const market = stockMarket;
-      const ticker = normalizeTicker(tickerEl?.value || "");
-      const qtd = Number(qtdAcoesEl?.value || 0);
-      const preco = Number(precoAcaoEl?.value || 0);
-
-      if (!Number.isFinite(qtd) || qtd <= 0) return;
-      if (!Number.isFinite(preco) || preco <= 0) return;
-
-      // precoAcao digitado:
-      // - BR: BRL
-      // - US: USD
-      let fxUSDBRL = null;
-      let valorUSD = null;
-      let totalBRL = null;
-
-      if (market === "US") {
-        // garante que temos USD/BRL no cache (se não tiver, tenta buscar do Firestore)
-        let fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-        if (!fxRate) {
-          await ensureUsdBrlQuote({ force: true });
-          fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
-        }
-
-        if (!Number.isFinite(fxRate) || fxRate <= 0) {
-          alert("Não foi possível obter a cotação USD/BRL. Rode o cron (Update Quotes) e tente novamente.");
-          return;
-        }
-
-        fxUSDBRL = fxRate;
-        valorUSD = qtd * preco;       // USD
-        totalBRL = valorUSD * fxRate; // BRL
-      } else {
-        totalBRL = qtd * preco;       // BRL
-      }
-
-      await addDoc(ref, {
-        descricao,
-        tipo: "investimento",
-        investKind: "stock",
-        market,
-        ticker,
-        qtdAcoes: qtd,
-        precoAcao: preco,   // BRL (BR) ou USD (US)
-        valor: totalBRL,    // sempre BRL
-        valorUSD,           // só US
-        fxUSDBRL,           // só US
-        createdAt: serverTimestamp()
-      });
-
-      if (descricaoEl) descricaoEl.value = "";
-      if (tickerEl) tickerEl.value = "";
-      if (qtdAcoesEl) qtdAcoesEl.value = "";
-      if (precoAcaoEl) precoAcaoEl.value = "";
-      if (valorEl) valorEl.value = "";
-      updateInvestTotalUIStock();
-      return;
-    }
-
-    // CDB
-    const valor = Number(valorEl?.value || 0);
-    const pctCdi = Number(cdbPctCdiEl?.value || 0);
-
-    if (!Number.isFinite(valor) || valor <= 0) return;
-    if (!Number.isFinite(pctCdi) || pctCdi <= 0) return;
-
-    await addDoc(ref, {
-      descricao,
-      tipo: "investimento",
-      investKind: "cdb",
-      valor,
-      cdbPctCdi: pctCdi,
-      createdAt: serverTimestamp()
-    });
-
-    if (descricaoEl) descricaoEl.value = "";
-    if (valorEl) valorEl.value = "";
-    if (cdbPctCdiEl) cdbPctCdiEl.value = "";
-    updateInvestTotalUICdb();
+  if (!descricao || !currentAddType) {
+    showToast("Preencha a descrição.", "error");
     return;
   }
 
-  // Receita / Despesa
-  const valor = Number(valorEl?.value || 0);
-  if (!Number.isFinite(valor) || valor <= 0) return;
+  const btnAddEl = document.getElementById("btnAdd");
+  if (btnAddEl) { btnAddEl.disabled = true; btnAddEl.textContent = "Salvando…"; }
 
-  // Base do mês das parcelas: mês atual (hoje)
-  const baseDate = new Date();
+  try {
+    if (currentAddType === "investimento") {
+      await addInvestimento(descricao);
+    } else if (currentAddType === "despesa") {
+      await addDespesa(descricao);
+    } else {
+      await addReceita(descricao);
+    }
+    showToast("Lançamento adicionado!", "success");
+  } catch (e) {
+    console.error(e);
+    showToast(`Erro: ${e?.message || "Tente novamente."}`, "error");
+  } finally {
+    if (btnAddEl) { btnAddEl.disabled = false; btnAddEl.textContent = "Adicionar lançamento"; }
+  }
+}
 
-  // Despesa: Pix/Cartão + parcelas
-  if (currentAddType === "despesa") {
-    const modo = despesaModoPagamento || "pix";
+async function addInvestimento(descricao) {
+  if (investKind === "stock") {
+    const market = stockMarket;
+    const ticker = normalizeTicker(tickerEl?.value || "");
+    const qtd    = Number(qtdAcoesEl?.value || 0);
+    const preco  = Number(precoAcaoEl?.value || 0);
 
-    if (modo === "cartao") {
-      const parcelas = Math.max(1, Number(parcelasEl?.value || 1) | 0);
-      const values = splitAmount(valor, parcelas);
-      const grupoId = uid();
+    if (!Number.isFinite(qtd) || qtd <= 0)   { throw new Error("Quantidade inválida."); }
+    if (!Number.isFinite(preco) || preco <= 0) { throw new Error("Preço inválido."); }
+    if (!ticker) { throw new Error("Ticker não informado."); }
 
-      for (let i = 0; i < parcelas; i++) {
-        const parcelaNumero = i + 1;
-        const parcelaDate = addMonths(baseDate, i);
+    let fxUSDBRL = null, valorUSD = null, totalBRL = null;
 
-        await addDoc(ref, {
-          descricao: `${descricao} (${parcelaNumero}/${parcelas})`,
-          tipo: "despesa",
-          valor: values[i],
-          modoPagamento: "cartao",
-          parcelasTotal: parcelas,
-          parcelaNumero,
-          grupoParcelamentoId: grupoId,
-          dateRef: Timestamp.fromDate(parcelaDate),
-          createdAt: serverTimestamp()
-        });
+    if (market === "US") {
+      let fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
+      if (!fxRate) {
+        await ensureUsdBrlQuote({ force: true });
+        fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
       }
-
-      if (descricaoEl) descricaoEl.value = "";
-      if (valorEl) valorEl.value = "";
-      if (parcelasEl) parcelasEl.value = "1";
-      setPaymentMode("pix");
-      return;
+      if (!Number.isFinite(fxRate) || fxRate <= 0) {
+        throw new Error("Cotação USD/BRL indisponível. Rode o cron (Update Quotes) e tente novamente.");
+      }
+      fxUSDBRL = fxRate;
+      valorUSD = qtd * preco;
+      totalBRL = valorUSD * fxRate;
+    } else {
+      totalBRL = qtd * preco;
     }
 
-    // Pix
     await addDoc(ref, {
-      descricao,
-      tipo: "despesa",
-      valor,
+      descricao, tipo: "investimento", investKind: "stock",
+      market, ticker, qtdAcoes: qtd, precoAcao: preco,
+      valor: totalBRL, valorUSD, fxUSDBRL,
+      createdAt: serverTimestamp()
+    });
+
+    resetAddForm();
+    if (tickerEl)    tickerEl.value    = "";
+    if (qtdAcoesEl)  qtdAcoesEl.value  = "";
+    if (precoAcaoEl) precoAcaoEl.value = "";
+    updateInvestTotalUIStock();
+    return;
+  }
+
+  // CDB
+  const valor   = Number(valorEl?.value || 0);
+  const pctCdi  = Number(cdbPctCdiEl?.value || 0);
+  if (!Number.isFinite(valor) || valor <= 0)   { throw new Error("Valor inválido."); }
+  if (!Number.isFinite(pctCdi) || pctCdi <= 0) { throw new Error("% do CDI inválido."); }
+
+  await addDoc(ref, {
+    descricao, tipo: "investimento", investKind: "cdb",
+    valor, cdbPctCdi: pctCdi,
+    createdAt: serverTimestamp()
+  });
+
+  resetAddForm();
+  if (cdbPctCdiEl) cdbPctCdiEl.value = "";
+  updateInvestTotalUICdb();
+}
+
+async function addDespesa(descricao) {
+  const valor = Number(valorEl?.value || 0);
+  if (!Number.isFinite(valor) || valor <= 0) { throw new Error("Valor inválido."); }
+
+  const baseDate = new Date();
+  const modo = despesaModoPagamento || "pix";
+
+  if (modo === "cartao") {
+    const parcelas = Math.max(1, Number(parcelasEl?.value || 1) | 0);
+    const values   = splitAmount(valor, parcelas);
+    const grupoId  = uid();
+
+    for (let i = 0; i < parcelas; i++) {
+      await addDoc(ref, {
+        descricao: `${descricao} (${i + 1}/${parcelas})`,
+        tipo: "despesa", valor: values[i],
+        modoPagamento: "cartao",
+        parcelasTotal: parcelas, parcelaNumero: i + 1,
+        grupoParcelamentoId: grupoId,
+        dateRef: Timestamp.fromDate(addMonths(baseDate, i)),
+        createdAt: serverTimestamp()
+      });
+    }
+    if (parcelasEl) parcelasEl.value = "1";
+  } else {
+    await addDoc(ref, {
+      descricao, tipo: "despesa", valor,
       modoPagamento: "pix",
       dateRef: Timestamp.fromDate(baseDate),
       createdAt: serverTimestamp()
     });
-
-    if (descricaoEl) descricaoEl.value = "";
-    if (valorEl) valorEl.value = "";
-    setPaymentMode("pix");
-    return;
   }
 
-  // Receita simples
+  resetAddForm();
+  setPaymentMode("pix");
+}
+
+async function addReceita(descricao) {
+  const valor = Number(valorEl?.value || 0);
+  if (!Number.isFinite(valor) || valor <= 0) { throw new Error("Valor inválido."); }
+
   await addDoc(ref, {
-    descricao,
-    tipo: "receita",
-    valor,
+    descricao, tipo: "receita", valor,
     createdAt: serverTimestamp()
   });
 
-  if (descricaoEl) descricaoEl.value = "";
-  if (valorEl) valorEl.value = "";
+  resetAddForm();
 }
 
-/**
- * ==========
- * Force quote refresh after snapshot
- * ==========
- */
+// ==============================
+// QUOTE REFRESH
+// ==============================
 let quoteRefreshInFlight = false;
 async function ensureQuotesThenRerender(allRows) {
   if (quoteRefreshInFlight) return;
@@ -1020,82 +975,74 @@ async function ensureQuotesThenRerender(allRows) {
   }
 }
 
-/**
- * ==========
- * Wire UI
- * ==========
- */
-if (btnReceita) btnReceita.addEventListener("click", () => toggleAddType("receita", btnReceita));
-if (btnDespesa) btnDespesa.addEventListener("click", () => toggleAddType("despesa", btnDespesa));
-if (btnInvest) btnInvest.addEventListener("click", () => toggleAddType("investimento", btnInvest));
-if (btnAdd) btnAdd.addEventListener("click", () => addCurrent());
+// ==============================
+// WIRE UI EVENTS
+// ==============================
+btnReceita?.addEventListener("click", () => toggleAddType("receita",      btnReceita));
+btnDespesa?.addEventListener("click", () => toggleAddType("despesa",      btnDespesa));
+btnInvest?.addEventListener("click",  () => toggleAddType("investimento", btnInvest));
+btnAdd?.addEventListener("click", addCurrent);
 
-// Pix/Cartão
-if (btnPix) btnPix.addEventListener("click", () => setPaymentMode("pix"));
-if (btnCartao) btnCartao.addEventListener("click", () => setPaymentMode("cartao"));
+// Allow Enter key to submit form
+addFormEl?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.tagName !== "BUTTON") addCurrent();
+});
 
-/**
- * ==========
- * Modal Edit: (único handler)
- * ==========
- */
+btnPix?.addEventListener("click",    () => setPaymentMode("pix"));
+btnCartao?.addEventListener("click", () => setPaymentMode("cartao"));
+
+// Edit modal
 (function wireEditModal() {
-  const modal = document.getElementById("modal");
-  const closeModal = document.getElementById("closeModal");
-  const saveEdit = document.getElementById("saveEdit");
+  const modal        = document.getElementById("modal");
+  const closeModalEl = document.getElementById("closeModal");
+  const saveEdit     = document.getElementById("saveEdit");
   const editDescricao = document.getElementById("editDescricao");
-  const editValor = document.getElementById("editValor");
+  const editValor     = document.getElementById("editValor");
 
   if (!modal || !saveEdit || !editDescricao || !editValor) return;
 
-  function closeEditModal() {
-    modal.style.display = "none";
+  const closeEditModal = () => {
+    modal.classList.remove("is-open");
     editId = null;
-  }
+  };
 
-  if (closeModal) closeModal.addEventListener("click", closeEditModal);
+  closeModalEl?.addEventListener("click", closeEditModal);
 
   saveEdit.addEventListener("click", async () => {
-    if (!editId) {
-      alert("Nenhum lançamento selecionado para edição.");
-      return;
-    }
+    if (!editId) { showToast("Nenhum lançamento selecionado.", "error"); return; }
 
     const descricao = (editDescricao.value || "").trim();
-    const valor = Number(editValor.value);
+    const valor     = Number(editValor.value);
 
-    if (!descricao) {
-      alert("Descrição é obrigatória.");
-      return;
-    }
-    if (!Number.isFinite(valor)) {
-      alert("Valor inválido.");
-      return;
-    }
+    if (!descricao) { showToast("Descrição obrigatória.", "error"); return; }
+    if (!Number.isFinite(valor)) { showToast("Valor inválido.", "error"); return; }
+
+    saveEdit.disabled = true;
+    saveEdit.textContent = "Salvando…";
 
     try {
       await updateDoc(doc(db, "transactions", editId), { descricao, valor });
       closeEditModal();
+      showToast("Lançamento atualizado!", "success");
     } catch (e) {
       console.error(e);
-      alert(`Falha ao salvar: ${e?.message || e}`);
+      showToast(`Falha ao salvar: ${e?.message || e}`, "error");
+    } finally {
+      saveEdit.disabled = false;
+      saveEdit.textContent = "Salvar alterações";
     }
   });
 })();
 
-/**
- * ==========
- * Boot
- * ==========
- */
+// ==============================
+// BOOT
+// ==============================
 showAddForm(false);
 if (investFieldsEl) investFieldsEl.hidden = true;
 setPaymentUIVisible(false);
-
-if (yearValue) yearValue.textContent = String(selectedYear);
+if (yearValue)  yearValue.textContent  = String(selectedYear);
 if (monthValue) monthValue.textContent = "Todos";
 
-// Ano/Mês dropdown
 wireDropdown(yearDD, yearBtn, (open) => {
   setDDOpen(yearDD, open);
   setDDOpen(monthDD, false);
@@ -1106,51 +1053,44 @@ wireDropdown(monthDD, monthBtn, (open) => {
   setDDOpen(yearDD, false);
 });
 
-if (clearFiltersBtn) {
-  clearFiltersBtn.addEventListener("click", async () => {
-    selectedYear = new Date().getFullYear();
-    selectedMonth = "all";
-    if (yearValue) yearValue.textContent = String(selectedYear);
-    if (monthValue) monthValue.textContent = "Todos";
-    setDDOpen(yearDD, false);
-    setDDOpen(monthDD, false);
+clearFiltersBtn?.addEventListener("click", async () => {
+  selectedYear  = new Date().getFullYear();
+  selectedMonth = "all";
+  if (yearValue)  yearValue.textContent  = String(selectedYear);
+  if (monthValue) monthValue.textContent = "Todos";
+  setDDOpen(yearDD,  false);
+  setDDOpen(monthDD, false);
+  if (window.__ALL_ROWS__) await ensureQuotesThenRerender(window.__ALL_ROWS__);
+});
 
-    if (window.__ALL_ROWS__) {
-      await ensureQuotesThenRerender(window.__ALL_ROWS__);
-    }
-  });
-}
-
-/**
- * ==========
- * Firestore subscription
- * ==========
- */
+// ==============================
+// FIRESTORE SUBSCRIPTION
+// ==============================
 onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
   const allRows = [];
   snapshot.forEach(docItem => {
     const data = docItem.data();
     allRows.push({
-      id: docItem.id,
-      descricao: data.descricao,
-      tipo: data.tipo,
-      valor: Number(data.valor || 0), // BRL (base p/ P&L)
-      valorUSD: data.valorUSD == null ? null : Number(data.valorUSD || 0),
-      fxUSDBRL: data.fxUSDBRL == null ? null : Number(data.fxUSDBRL || 0),
+      id:         docItem.id,
+      descricao:  data.descricao,
+      tipo:       data.tipo,
+      valor:      Number(data.valor     || 0),
+      valorUSD:   data.valorUSD  == null ? null : Number(data.valorUSD  || 0),
+      fxUSDBRL:   data.fxUSDBRL  == null ? null : Number(data.fxUSDBRL  || 0),
       investKind: data.investKind,
-      market: data.market,
-      cdbPctCdi: Number(data.cdbPctCdi || 0),
-      ticker: data.ticker,
-      qtdAcoes: Number(data.qtdAcoes || 0),
-      precoAcao: Number(data.precoAcao || 0),
-      createdAt: toDateMaybe(data.createdAt),
-      dateRef: toDateMaybe(data.dateRef) || null
+      market:     data.market,
+      cdbPctCdi:  Number(data.cdbPctCdi || 0),
+      ticker:     data.ticker,
+      qtdAcoes:   Number(data.qtdAcoes  || 0),
+      precoAcao:  Number(data.precoAcao || 0),
+      createdAt:  toDateMaybe(data.createdAt),
+      dateRef:    toDateMaybe(data.dateRef) || null
     });
   });
 
   window.__ALL_ROWS__ = allRows;
 
-  // anos
+  // Build year options
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
   allRows.forEach(r => {
@@ -1188,21 +1128,17 @@ onSnapshot(query(ref, orderBy("createdAt", "desc")), async snapshot => {
 
   if (yearValue) yearValue.textContent = String(selectedYear);
 
-  // IMPORTANTE: inicializa os dropdowns de investimento (uma vez)
   setupInvestDropdownsOnce();
-
   renderAll(allRows);
   await ensureQuotesThenRerender(allRows);
 });
 
-// Exposto para o pull-to-refresh no mobile
+// Pull-to-refresh (mobile)
 window.refreshApp = async function refreshApp() {
-  try {
-    if (typeof quoteCache?.clear === "function") quoteCache.clear();
-  } catch {}
-
+  try { if (typeof quoteCache?.clear === "function") quoteCache.clear(); } catch {}
   if (window.__ALL_ROWS__) {
     await ensureQuotesThenRerender(window.__ALL_ROWS__);
+    showToast("Dados atualizados!", "success");
   } else {
     location.reload();
   }
