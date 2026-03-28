@@ -1,323 +1,347 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <!-- Bloqueia zoom (pinch/double-tap) -->
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  />
-  <title>Financial Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#060810"/>
+  <title>Dashboard Financeiro</title>
 
-  <link rel="stylesheet" href="style.css?v=42"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
   <div class="app">
     <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon" aria-hidden="true"></div>
-        <div class="brand-text">
-          <div class="brand-title">Dashboard</div>
-          <div class="brand-subtitle">Finanças Pessoais</div>
-        </div>
-      </div>
+    <aside class="sidebar" role="complementary" aria-label="Painel de controle">
 
-      <div class="sidebar-section">
-        <div class="section-title">Adicionar lançamento</div>
-
-        <div class="btn-group" role="group" aria-label="Adicionar lançamento por tipo">
-          <button id="btnReceita" class="btn receita" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Receita
-          </button>
-          <button id="btnDespesa" class="btn despesa" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Despesa
-          </button>
-          <button id="btnInvest" class="btn invest" type="button">
-            <span class="btn-dot" aria-hidden="true"></span>
-            Investimento
-          </button>
-        </div>
-
-        <!-- FORM (toggle via JS) -->
-        <div id="addForm" style="display:none; margin-top: 14px;">
-          <label class="field">
-            <span class="field-label">Descrição</span>
-            <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado">
-          </label>
-
-          <!-- valor padrão (Receita/Despesa) e também principal do CDB -->
-          <label class="field" id="valorField">
-            <span class="field-label">Valor</span>
-            <input type="number" id="valor" placeholder="Ex: 150.00" inputmode="decimal" step="0.01">
-          </label>
-
-          <!-- ===== Pagamento (somente Despesa) ===== -->
-          <div id="payModeWrap" style="display:none; margin-top: 10px;">
-            <div class="field">
-              <span class="field-label">Modo de pagamento</span>
-              <div class="btn-group" style="gap:8px;">
-                <button id="btnPix" class="btn" type="button">Pix</button>
-                <button id="btnCartao" class="btn" type="button">Cartão</button>
-              </div>
-            </div>
-
-            <div class="field" id="installmentsWrap" style="display:none;">
-              <span class="field-label">Parcelas</span>
-              <input id="parcelas" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2" value="1" />
-            </div>
-          </div>
-
-          <!-- Campos de investimento -->
-          <div class="invest-fields" id="investFields" hidden>
-            <!-- SUBTIPO (dropdown custom igual Ano/Mês) -->
-            <div class="field">
-              <span class="field-label">Tipo de investimento</span>
-
-              <div class="dd dd--blue" id="investKindDD">
-                <button class="dd-btn" id="investKindBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="dd-dot" aria-hidden="true"></span>
-                  <span class="dd-value" id="investKindValue">Ação</span>
-                  <span class="dd-caret" aria-hidden="true"></span>
-                </button>
-                <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar tipo de investimento" id="investKindMenu"></div>
-              </div>
-            </div>
-
-            <!-- AÇÃO -->
-            <div id="stockFields">
-              <!-- MERCADO (dropdown custom igual Ano/Mês) -->
-              <div class="field">
-                <span class="field-label">Mercado</span>
-
-                <div class="dd dd--purple" id="stockMarketDD">
-                  <button class="dd-btn" id="stockMarketBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-                    <span class="dd-dot" aria-hidden="true"></span>
-                    <span class="dd-value" id="stockMarketValue">Brasil (BRL)</span>
-                    <span class="dd-caret" aria-hidden="true"></span>
-                  </button>
-                  <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mercado" id="stockMarketMenu"></div>
-                </div>
-              </div>
-
-              <label class="field">
-                <span class="field-label">Ticker</span>
-                <input type="text" id="ticker" placeholder="Ex: ITSA4.SA (BR) / AAPL (US)">
-              </label>
-
-              <div class="field-row">
-                <label class="field">
-                  <span class="field-label">Quantidade</span>
-                  <input type="number" id="qtdAcoes" placeholder="Ex: 2" inputmode="numeric" step="1" min="0">
-                </label>
-
-                <label class="field">
-                  <span class="field-label">Preço/unidade</span>
-                  <input type="number" id="precoAcao" placeholder="Ex: 15.00" inputmode="decimal" step="0.01" min="0">
-                </label>
-              </div>
-
-              <div class="total-preview">
-                <span>Total</span>
-                <strong id="investTotal">R$ 0,00</strong>
-              </div>
-
-              <p class="sidebar-hint" style="margin-top:8px">
-                Para ações, o <b>Valor</b> é preenchido automaticamente com <code>quantidade × preço</code>.
-              </p>
-            </div>
-
-            <!-- CDB -->
-            <div id="cdbFields" hidden>
-              <label class="field">
-                <span class="field-label">% do CDI</span>
-                <input type="number" id="cdbPctCdi" placeholder="Ex: 110" inputmode="decimal" step="0.01" min="0">
-              </label>
-
-              <p class="sidebar-hint" style="margin-top:8px">
-                Para CDB, informe o <b>Valor</b> (principal) e o <b>%CDI</b>.
-              </p>
-            </div>
-          </div>
-
-          <button id="btnAdd" class="btn btn-primary" type="button" style="width: 100%; margin-top: 10px;">
-            Adicionar
-          </button>
-        </div>
-      </div>
-
-      <!-- PERÍODO -->
-      <div class="sidebar-section">
-        <div class="section-title">Período</div>
-
-        <div class="field">
-          <span class="field-label">Ano</span>
-          <div class="dd dd--blue" id="yearDD">
-            <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dd-dot" aria-hidden="true"></span>
-              <span class="dd-value" id="yearValue">Carregando...</span>
-              <span class="dd-caret" aria-hidden="true"></span>
-            </button>
-            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar ano" id="yearMenu"></div>
-          </div>
-        </div>
-
-        <div class="field">
-          <span class="field-label">Mês</span>
-          <div class="dd dd--purple" id="monthDD">
-            <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dd-dot" aria-hidden="true"></span>
-              <span class="dd-value" id="monthValue">Todos</span>
-              <span class="dd-caret" aria-hidden="true"></span>
-            </button>
-            <div class="dd-menu" role="listbox" tabindex="-1" aria-label="Selecionar mês" id="monthMenu"></div>
-          </div>
-        </div>
-
-        <div class="filter-actions">
-          <button class="mini-btn" id="clearFilters" type="button">Limpar</button>
-        </div>
-
-        <p class="sidebar-hint">
-          O ano é gerado automaticamente a partir das datas dos lançamentos (e sempre inclui o ano atual).
-        </p>
-      </div>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <h1 class="page-title">Dashboard Financeiro</h1>
-          <p class="page-subtitle">Resumo, gráficos e lançamentos em tempo real</p>
-        </div>
-      </header>
-
-      <!-- KPIs -->
-      <section class="kpi-grid" aria-label="Indicadores">
-        <article class="card kpi">
-          <div class="kpi-head">
-            <span class="kpi-label">Saldo</span>
-            <span class="kpi-badge kpi-badge--blue">Período</span>
-          </div>
-          <h2 class="kpi-value" id="saldo">R$ 0</h2>
-          <div class="kpi-spark" aria-hidden="true"></div>
-        </article>
-
-        <article class="card kpi">
-          <div class="kpi-head">
-            <span class="kpi-label">Receitas</span>
-            <span class="kpi-badge kpi-badge--green">Entrada</span>
-          </div>
-          <h2 class="kpi-value" id="receitas">R$ 0</h2>
-          <div class="kpi-spark kpi-spark--green" aria-hidden="true"></div>
-        </article>
-
-        <article class="card kpi">
-          <div class="kpi-head">
-            <span class="kpi-label">Despesas</span>
-            <span class="kpi-badge kpi-badge--red">Saída</span>
-          </div>
-          <h2 class="kpi-value" id="despesas">R$ 0</h2>
-          <div class="kpi-spark kpi-spark--red" aria-hidden="true"></div>
-        </article>
-
-        <article class="card kpi">
-          <div class="kpi-head">
-            <span class="kpi-label">Investimentos</span>
-            <span class="kpi-badge kpi-badge--purple">Carteira</span>
-          </div>
-          <h2 class="kpi-value" id="investimentos">R$ 0</h2>
-          <div class="kpi-spark kpi-spark--purple" aria-hidden="true"></div>
-        </article>
-      </section>
-
-      <!-- CHARTS -->
-      <section class="grid" aria-label="Gráficos">
-        <article class="card chart-card span-7">
-          <div class="card-head">
-            <h3 class="card-title">Receitas e Despesas</h3>
-            <div class="card-actions">
-              <span class="chip">Receita</span>
-              <span class="chip chip--muted">Despesa</span>
-            </div>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="barChart"></canvas>
-          </div>
-        </article>
-
-        <article class="card chart-card span-5">
-          <div class="card-head">
-            <h3 class="card-title">Distribuição</h3>
-            <span class="chip chip--muted">Receita / Despesa / Invest.</span>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="pieChart"></canvas>
-          </div>
-        </article>
-      </section>
-
-      <!-- TABLE -->
-      <section class="card table-card" aria-label="Lançamentos">
-        <div class="card-head">
-          <h3 class="card-title">Lançamentos</h3>
-          <span class="chip chip--muted">Editar / Excluir</span>
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Descrição</th>
-                <th>Tipo</th>
-                <th>Valor</th>
-                <th class="th-actions">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tabela"></tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- MODAL EDIT -->
-  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Editar lançamento">
-    <div class="modal-content">
-      <div class="modal-head">
-        <h3>Editar Lançamento</h3>
-        <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
-      </div>
-
-      <label class="field">
-        <span class="field-label">Descrição</span>
-        <input type="text" id="editDescricao">
-      </label>
-
-      <label class="field">
-        <span class="field-label">Valor</span>
-        <input type="number" id="editValor" inputmode="decimal" step="0.01">
-      </label>
-
-      <button id="saveEdit" class="btn btn-primary" type="button">Salvar</button>
+```
+  <div class="brand">
+    <div class="brand-icon" aria-hidden="true"></div>
+    <div class="brand-text">
+      <div class="brand-title">FinDash</div>
+      <div class="brand-subtitle">Finanças Pessoais</div>
     </div>
   </div>
 
+  <!-- ADD TRANSACTION -->
+  <div class="sidebar-section">
+    <div class="section-title">Novo lançamento</div>
+
+    <div class="btn-group" role="group" aria-label="Tipo de lançamento">
+      <button id="btnReceita" class="btn receita" type="button">
+        <span class="btn-dot" aria-hidden="true"></span>
+        Receita
+      </button>
+      <button id="btnDespesa" class="btn despesa" type="button">
+        <span class="btn-dot" aria-hidden="true"></span>
+        Despesa
+      </button>
+      <button id="btnInvest" class="btn invest" type="button">
+        <span class="btn-dot" aria-hidden="true"></span>
+        Investimento
+      </button>
+    </div>
+
+    <div id="addForm" style="display:none">
+      <label class="field" style="margin-top:12px">
+        <span class="field-label">Descrição</span>
+        <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado" autocomplete="off">
+      </label>
+
+      <label class="field" id="valorField">
+        <span class="field-label">Valor</span>
+        <input type="number" id="valor" placeholder="0,00" inputmode="decimal" step="0.01" min="0">
+      </label>
+
+      <!-- Pagamento (Despesa) -->
+      <div id="payModeWrap" style="display:none; margin-top:10px;">
+        <div class="field">
+          <span class="field-label">Modo de pagamento</span>
+          <div class="btn-group" style="flex-direction:row; gap:7px;">
+            <button id="btnPix" class="btn" type="button" style="flex:1; justify-content:center;">Pix</button>
+            <button id="btnCartao" class="btn" type="button" style="flex:1; justify-content:center;">Cartão</button>
+          </div>
+        </div>
+        <div class="field" id="installmentsWrap" style="display:none;">
+          <span class="field-label">Parcelas</span>
+          <input id="parcelas" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2" value="1"/>
+        </div>
+      </div>
+
+      <!-- Investimento fields -->
+      <div class="invest-fields" id="investFields" hidden>
+
+        <div class="field">
+          <span class="field-label">Tipo de investimento</span>
+          <div class="dd dd--blue" id="investKindDD">
+            <button class="dd-btn" id="investKindBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-dot" aria-hidden="true"></span>
+              <span class="dd-value" id="investKindValue">Ação</span>
+              <span class="dd-caret" aria-hidden="true"></span>
+            </button>
+            <div class="dd-menu" role="listbox" tabindex="-1" id="investKindMenu"></div>
+          </div>
+        </div>
+
+        <!-- Ação fields -->
+        <div id="stockFields">
+          <div class="field">
+            <span class="field-label">Mercado</span>
+            <div class="dd dd--purple" id="stockMarketDD">
+              <button class="dd-btn" id="stockMarketBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="dd-dot" aria-hidden="true"></span>
+                <span class="dd-value" id="stockMarketValue">Brasil (BRL)</span>
+                <span class="dd-caret" aria-hidden="true"></span>
+              </button>
+              <div class="dd-menu" role="listbox" tabindex="-1" id="stockMarketMenu"></div>
+            </div>
+          </div>
+
+          <label class="field">
+            <span class="field-label">Ticker</span>
+            <input type="text" id="ticker" placeholder="Ex: ITSA4 (BR) / AAPL (US)" autocomplete="off" style="text-transform:uppercase">
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span class="field-label">Quantidade</span>
+              <input type="number" id="qtdAcoes" placeholder="0" inputmode="numeric" step="1" min="0">
+            </label>
+            <label class="field">
+              <span class="field-label">Preço/unidade</span>
+              <input type="number" id="precoAcao" placeholder="0,00" inputmode="decimal" step="0.01" min="0">
+            </label>
+          </div>
+
+          <div class="total-preview">
+            <span>Total estimado</span>
+            <strong id="investTotal">R$ 0,00</strong>
+          </div>
+
+          <p class="sidebar-hint">
+            O <b>Valor</b> é preenchido automaticamente com <code>qtd × preço</code>.
+          </p>
+        </div>
+
+        <!-- CDB fields -->
+        <div id="cdbFields" hidden>
+          <label class="field">
+            <span class="field-label">% do CDI</span>
+            <input type="number" id="cdbPctCdi" placeholder="Ex: 110" inputmode="decimal" step="0.01" min="0">
+          </label>
+          <p class="sidebar-hint">Informe o <b>Valor</b> (principal) e o <b>% do CDI</b>.</p>
+        </div>
+      </div>
+
+      <button id="btnAdd" class="btn btn-primary" type="button" style="width:100%; margin-top:12px;">
+        Adicionar lançamento
+      </button>
+    </div>
+  </div>
+
+  <!-- PERIOD FILTER -->
+  <div class="sidebar-section">
+    <div class="section-title">Filtrar período</div>
+
+    <div class="field">
+      <span class="field-label">Ano</span>
+      <div class="dd dd--blue" id="yearDD">
+        <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="dd-dot" aria-hidden="true"></span>
+          <span class="dd-value" id="yearValue">Carregando…</span>
+          <span class="dd-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dd-menu" role="listbox" tabindex="-1" id="yearMenu"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Mês</span>
+      <div class="dd dd--purple" id="monthDD">
+        <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="dd-dot" aria-hidden="true"></span>
+          <span class="dd-value" id="monthValue">Todos</span>
+          <span class="dd-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dd-menu" role="listbox" tabindex="-1" id="monthMenu"></div>
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button class="mini-btn" id="clearFilters" type="button">↺ Limpar filtros</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- MAIN -->
+<main class="main" role="main">
+
+  <header class="topbar">
+    <div>
+      <h1 class="page-title">Dashboard Financeiro</h1>
+      <p class="page-subtitle">Acompanhe suas finanças em tempo real</p>
+    </div>
+    <div class="live-indicator" aria-label="Dados em tempo real">
+      <span class="live-dot"></span>
+      AO VIVO
+    </div>
+  </header>
+
+  <!-- KPIs -->
+  <section class="kpi-grid" aria-label="Resumo financeiro">
+
+    <article class="card kpi kpi--blue">
+      <div class="kpi-head">
+        <span class="kpi-label">Saldo</span>
+        <span class="kpi-badge kpi-badge--blue">Período</span>
+      </div>
+      <h2 class="kpi-value" id="saldo">R$ 0</h2>
+      <p class="kpi-sub">Receitas − Despesas</p>
+      <div class="kpi-orb" aria-hidden="true"></div>
+    </article>
+
+    <article class="card kpi kpi--green">
+      <div class="kpi-head">
+        <span class="kpi-label">Receitas</span>
+        <span class="kpi-badge kpi-badge--green">Entrada</span>
+      </div>
+      <h2 class="kpi-value" id="receitas">R$ 0</h2>
+      <p class="kpi-sub" id="receitasCount">0 lançamentos</p>
+      <div class="kpi-orb" aria-hidden="true"></div>
+    </article>
+
+    <article class="card kpi kpi--red">
+      <div class="kpi-head">
+        <span class="kpi-label">Despesas</span>
+        <span class="kpi-badge kpi-badge--red">Saída</span>
+      </div>
+      <h2 class="kpi-value" id="despesas">R$ 0</h2>
+      <p class="kpi-sub" id="despesasCount">0 lançamentos</p>
+      <div class="kpi-orb" aria-hidden="true"></div>
+    </article>
+
+    <article class="card kpi kpi--purple">
+      <div class="kpi-head">
+        <span class="kpi-label">Investimentos</span>
+        <span class="kpi-badge kpi-badge--purple">Carteira</span>
+      </div>
+      <h2 class="kpi-value" id="investimentos">R$ 0</h2>
+      <p class="kpi-sub" id="investCount">0 posições</p>
+      <div class="kpi-orb" aria-hidden="true"></div>
+    </article>
+
+  </section>
+
+  <!-- CHARTS -->
+  <section class="charts-grid" aria-label="Gráficos">
+
+    <article class="card chart-card">
+      <div class="card-head">
+        <h3 class="card-title">Receitas × Despesas</h3>
+        <div class="card-actions">
+          <span class="chip chip--green">Receita</span>
+          <span class="chip chip--red">Despesa</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="barChart" role="img" aria-label="Gráfico de receitas e despesas"></canvas>
+      </div>
+    </article>
+
+    <article class="card chart-card">
+      <div class="card-head">
+        <h3 class="card-title">Distribuição</h3>
+        <span class="chip chip--muted">Receita / Despesa / Invest.</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="pieChart" role="img" aria-label="Gráfico de distribuição financeira"></canvas>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- TABLE -->
+  <section class="card table-card" aria-label="Lançamentos">
+    <div class="card-head">
+      <h3 class="card-title">Lançamentos</h3>
+      <div class="card-actions">
+        <span class="chip chip--muted" id="tableCount">0 registros</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Valor</th>
+            <th class="th-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabela"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+```
+
+  </div>
+
+  <!-- MODAL EDIT -->
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h3 id="modalTitle">Editar Lançamento</h3>
+        <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
+      </div>
+
+```
+  <label class="field">
+    <span class="field-label">Descrição</span>
+    <input type="text" id="editDescricao" autocomplete="off">
+  </label>
+
+  <label class="field">
+    <span class="field-label">Valor</span>
+    <input type="number" id="editValor" inputmode="decimal" step="0.01" min="0">
+  </label>
+
+  <button id="saveEdit" class="btn btn-primary" type="button" style="width:100%; margin-top:12px;">
+    Salvar alterações
+  </button>
+</div>
+```
+
+  </div>
+
   <script type="module" src="firebase.js"></script>
+
   <script type="module" src="app.js"></script>
 
   <script>
+    // Modal close handlers
     const modal = document.getElementById("modal");
     const closeModal = document.getElementById("closeModal");
-    if (closeModal) closeModal.onclick = () => (modal.style.display = "none");
+    if (closeModal) closeModal.onclick = () => modal.classList.remove("is-open");
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.style.display = "none";
+      if (e.target === modal) modal.classList.remove("is-open");
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("is-open")) {
+        modal.classList.remove("is-open");
+      }
     });
   </script>
+
 </body>
 </html>
