@@ -224,10 +224,10 @@ function setPaymentMode(mode) {
 }
 
 function getInvestTotalStock() {
-  const qtd   = Number(qtdAcoesEl?.value || 0);
-  const preco = Number(precoAcaoEl?.value || 0);
-  const q = Number.isFinite(qtd)   ? qtd   : 0;
-  const p = Number.isFinite(preco) ? preco : 0;
+  const qtd   = Number(qtdAcoesEl?.value || 0.0);
+  const preco = Number(precoAcaoEl?.value || 0.0);
+  const q = Number.isFinite(qtd)   ? qtd   : 0.0;
+  const p = Number.isFinite(preco) ? preco : 0.0;
   const raw = q * p;
   if (stockMarket !== "US") return raw;
   const fxRate = quoteCache.get(FX_USD_BRL_DOC_ID)?.price ?? null;
