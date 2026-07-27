@@ -1,443 +1,128 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <meta name="theme-color" content="#060810"/>
-  <title>Dashboard Financeiro</title>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B0B0F" />
+  <title>Build & Invest | Dashboard Patrimonial</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-  <!-- Toast notifications -->
-  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <div class="brand">
+        <div class="brand-mark">BI</div>
+        <div>
+          <strong>Build & Invest</strong>
+          <span>Plano patrimonial</span>
+        </div>
+      </div>
 
-  <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar" role="complementary" aria-label="Painel de controle">
+      <nav class="nav-list" aria-label="Módulos do dashboard">
+        <a href="#dashboard" class="is-active">Dashboard</a>
+        <a href="#investimentos">Investimentos</a>
+        <a href="#fiis">FIIs</a>
+        <a href="#acoes">Ações</a>
+        <a href="#exterior">Exterior</a>
+        <a href="#fluxo">Fluxo de caixa</a>
+        <a href="#financiamento">Financiamento</a>
+        <a href="#analista">Analista patrimonial</a>
+      </nav>
 
-```
-  <div class="brand">
-    <div class="brand-icon" aria-hidden="true"></div>
-    <div class="brand-text">
-      <div class="brand-title">FinDash</div>
-      <div class="brand-subtitle">Finanças Pessoais</div>
-    </div>
+      <div class="strategy-card">
+        <span>Estratégia</span>
+        <strong>Buy and Hold + renda passiva</strong>
+        <p>Diversificação gradual, aportes constantes e reinvestimento de dividendos.</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <span class="status-dot"></span> Plano atualizado • Buy & Hold • Longo prazo
+        </div>
+        <a class="topbar-action" href="#analista">Ver recomendações</a>
+      </header>
+
+      <section class="hero" id="dashboard">
+        <div>
+          <p class="eyebrow">Dashboard financeiro pessoal</p>
+          <h1>Construção de patrimônio até a independência financeira.</h1>
+          <p>Acompanhe patrimônio, carteira, renda passiva, fluxo de caixa, financiamento e metas em uma visão premium dark mode.</p>
+        </div>
+        <div class="goal-card">
+          <span>Meta principal</span>
+          <strong>R$ 10.000/mês</strong>
+          <small>renda passiva recorrente</small>
+          <div class="goal-progress" style="--goal-progress: 8%" role="progressbar" aria-label="Progresso da meta de renda passiva" aria-valuenow="8" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          <em>Foco: FIIs, dividendos e reinvestimento</em>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Indicadores principais">
+        <article class="card kpi-card"><span>Patrimônio total</span><strong id="totalAssets">R$ 0</strong><small>Investimentos + imóvel</small></article>
+        <article class="card kpi-card"><span>Patrimônio líquido</span><strong id="netWorth">R$ 0</strong><small>Ativos menos financiamento</small></article>
+        <article class="card kpi-card"><span>Investimentos atuais</span><strong id="investmentsTotal">R$ 0</strong><small>Brasil + exterior convertido</small></article>
+        <article class="card kpi-card"><span>Renda passiva mensal</span><strong id="passiveIncome">R$ 0</strong><small>Base atual / meta FIIs</small></article>
+        <article class="card kpi-card"><span>Aporte mensal</span><strong>R$ 1.300</strong><small>R$ 1.100 Brasil + R$ 200 exterior</small></article>
+        <article class="card kpi-card"><span>Progresso até R$ 1 milhão</span><strong id="millionProgress">0%</strong><small><span id="millionRemaining">R$ 0</span> restantes</small></article>
+      </section>
+
+      <section class="charts-grid">
+        <article class="card chart-card chart-card--featured"><div class="card-head"><h2>Evolução patrimonial</h2><span>projeção de 60 meses</span></div><canvas id="wealthChart"></canvas></article>
+        <article class="card chart-card"><div class="card-head"><h2>Distribuição atual</h2><span>carteira</span></div><canvas id="allocationChart"></canvas></article>
+        <article class="card chart-card"><div class="card-head"><h2>Dividendos recebidos</h2><span>trilha de renda</span></div><canvas id="dividendChart"></canvas></article>
+        <article class="card chart-card"><div class="card-head"><h2>Progresso até R$ 1 milhão</h2><span>meta</span></div><canvas id="goalChart"></canvas></article>
+      </section>
+
+      <section class="section-title-row"><div><p class="eyebrow">Carteira</p><h2>Investimentos e alocação</h2></div><span>Plano de aportes: R$ 1.300/mês</span></section>
+
+      <section class="module-grid" id="investimentos">
+        <article class="card table-card wide">
+          <div class="card-head"><h2>Investimentos Brasil</h2><span>renda fixa atual</span></div>
+          <table><thead><tr><th>Ativo</th><th>Categoria</th><th>Valor investido</th><th>Rentabilidade</th></tr></thead><tbody id="brazilInvestments"></tbody></table>
+        </article>
+        <article class="card allocation-card">
+          <h2>Distribuição alvo</h2>
+          <div id="targetAllocation" class="allocation-list"></div>
+        </article>
+      </section>
+
+      <section class="section-title-row"><div><p class="eyebrow">Renda passiva</p><h2>FIIs e dividendos</h2></div><span>Meta final: R$ 10.000/mês</span></section>
+
+      <section class="module-grid" id="fiis">
+        <article class="card wide">
+          <div class="card-head"><h2>Módulo FIIs</h2><span>renda mensal</span></div>
+          <div class="income-goals" id="fiiGoals"></div>
+          <div class="segments"><span>Shopping</span><span>Logística</span><span>Papel</span><span>Renda Urbana</span><span>Escritórios</span></div>
+        </article>
+      </section>
+
+      <section class="module-grid three-cols bento" id="acoes">
+        <article class="card"><h2>Ações Brasil</h2><p>Controle por empresa, código, setor, quantidade, preço médio, dividendos e valorização.</p></article>
+        <article class="card" id="exterior"><h2>Exterior</h2><p><strong>Procter & Gamble (PG):</strong> US$ 474,14. Aporte mensal planejado de R$ 200 para exposição internacional.</p></article>
+        <article class="card" id="fluxo"><h2>Fluxo de caixa</h2><p>Receitas, despesas, aportes e sobras mensais consolidados para manter disciplina financeira.</p></article>
+      </section>
+
+      <section class="section-title-row"><div><p class="eyebrow">Imóvel</p><h2>Financiamento e patrimônio imobiliário</h2></div><span>Monitoramento SAC</span></section>
+
+      <section class="module-grid financing-grid" id="financiamento">
+        <article class="card table-card wide">
+          <div class="card-head"><h2>Patrimônio imobiliário</h2><span>SAC • 10,654% a.a.</span></div>
+          <table><tbody id="propertyRows"></tbody></table>
+        </article>
+        <article class="card"><h2>Financiamento</h2><p id="propertyEquity"></p><div class="meter"><span id="debtMeter"></span></div><small id="debtLabel"></small></article>
+      </section>
+
+      <section class="card analyst" id="analista">
+        <div class="card-head"><h2>🤖 Analista Patrimonial</h2><span>inteligência financeira</span></div>
+        <div id="analystInsights" class="insight-grid"></div>
+      </section>
+    </main>
   </div>
-
-  <!-- ADD TRANSACTION -->
-  <div class="sidebar-section">
-    <div class="section-title">Novo lançamento</div>
-
-    <div class="btn-group" role="group" aria-label="Tipo de lançamento">
-      <button id="btnReceita" class="btn receita" type="button">
-        <span class="btn-dot" aria-hidden="true"></span>
-        Receita
-      </button>
-      <button id="btnDespesa" class="btn despesa" type="button">
-        <span class="btn-dot" aria-hidden="true"></span>
-        Despesa
-      </button>
-      <button id="btnInvest" class="btn invest" type="button">
-        <span class="btn-dot" aria-hidden="true"></span>
-        Investimento
-      </button>
-    </div>
-
-    <div id="addForm" style="display:none">
-      <label class="field" style="margin-top:12px">
-        <span class="field-label">Descrição</span>
-        <input type="text" id="descricao" placeholder="Ex: Salário, aluguel, mercado" autocomplete="off">
-      </label>
-
-      <label class="field" id="valorField">
-        <span class="field-label">Valor</span>
-        <input type="number" id="valor" placeholder="0,00" inputmode="decimal" step="0.01" min="0">
-      </label>
-
-      <!-- Pagamento (Despesa) -->
-      <div id="payModeWrap" style="display:none; margin-top:10px;">
-        <div class="field">
-          <span class="field-label">Modo de pagamento</span>
-          <div class="btn-group" style="flex-direction:row; gap:7px;">
-            <button id="btnPix" class="btn" type="button" style="flex:1; justify-content:center;">Pix</button>
-            <button id="btnCartao" class="btn" type="button" style="flex:1; justify-content:center;">Cartão</button>
-          </div>
-        </div>
-        <div class="field" id="installmentsWrap" style="display:none;">
-          <span class="field-label">Parcelas</span>
-          <input id="parcelas" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex: 2" value="1"/>
-        </div>
-      </div>
-
-      <!-- Investimento fields -->
-      <div class="invest-fields" id="investFields" hidden>
-
-        <div class="field">
-          <span class="field-label">Tipo de investimento</span>
-          <div class="dd dd--blue" id="investKindDD">
-            <button class="dd-btn" id="investKindBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dd-dot" aria-hidden="true"></span>
-              <span class="dd-value" id="investKindValue">Ação</span>
-              <span class="dd-caret" aria-hidden="true"></span>
-            </button>
-            <div class="dd-menu" role="listbox" tabindex="-1" id="investKindMenu"></div>
-          </div>
-        </div>
-
-        <!-- Ação fields -->
-        <div id="stockFields">
-          <div class="field">
-            <span class="field-label">Mercado</span>
-            <div class="dd dd--purple" id="stockMarketDD">
-              <button class="dd-btn" id="stockMarketBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-                <span class="dd-dot" aria-hidden="true"></span>
-                <span class="dd-value" id="stockMarketValue">Brasil (BRL)</span>
-                <span class="dd-caret" aria-hidden="true"></span>
-              </button>
-              <div class="dd-menu" role="listbox" tabindex="-1" id="stockMarketMenu"></div>
-            </div>
-          </div>
-
-          <label class="field">
-            <span class="field-label">Ticker</span>
-            <input type="text" id="ticker" placeholder="Ex: ITSA4 (BR) / AAPL (US)" autocomplete="off" style="text-transform:uppercase">
-          </label>
-
-          <div class="field-row">
-            <label class="field">
-              <span class="field-label">Quantidade</span>
-              <input type="number" id="qtdAcoes" placeholder="0,00" inputmode="decimal" step="any" min="0">
-            </label>
-            <label class="field">
-              <span class="field-label">Preço/unidade</span>
-              <input type="number" id="precoAcao" placeholder="0,00" inputmode="decimal" step="0.01" min="0">
-            </label>
-          </div>
-
-          <div class="total-preview">
-            <span>Total estimado</span>
-            <strong id="investTotal">R$ 0,00</strong>
-          </div>
-
-          <p class="sidebar-hint">
-            O <b>Valor</b> é preenchido automaticamente com <code>qtd × preço</code>.
-          </p>
-        </div>
-
-        <!-- CDB fields -->
-        <div id="cdbFields" hidden>
-          <label class="field">
-            <span class="field-label">% do CDI</span>
-            <input type="number" id="cdbPctCdi" placeholder="Ex: 110" inputmode="decimal" step="0.01" min="0">
-          </label>
-          <p class="sidebar-hint">Informe o <b>Valor</b> (principal) e o <b>% do CDI</b>.</p>
-        </div>
-      </div>
-
-      <button id="btnAdd" class="btn btn-primary" type="button" style="width:100%; margin-top:12px;">
-        Adicionar lançamento
-      </button>
-    </div>
-  </div>
-
-  <!-- PERIOD FILTER -->
-  <div class="sidebar-section">
-    <div class="section-title">Filtrar período</div>
-
-    <div class="field">
-      <span class="field-label">Ano</span>
-      <div class="dd dd--blue" id="yearDD">
-        <button class="dd-btn" id="yearBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-          <span class="dd-dot" aria-hidden="true"></span>
-          <span class="dd-value" id="yearValue">Carregando…</span>
-          <span class="dd-caret" aria-hidden="true"></span>
-        </button>
-        <div class="dd-menu" role="listbox" tabindex="-1" id="yearMenu"></div>
-      </div>
-    </div>
-
-    <div class="field">
-      <span class="field-label">Mês</span>
-      <div class="dd dd--purple" id="monthDD">
-        <button class="dd-btn" id="monthBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
-          <span class="dd-dot" aria-hidden="true"></span>
-          <span class="dd-value" id="monthValue">Todos</span>
-          <span class="dd-caret" aria-hidden="true"></span>
-        </button>
-        <div class="dd-menu" role="listbox" tabindex="-1" id="monthMenu"></div>
-      </div>
-    </div>
-
-    <div class="filter-actions">
-      <button class="mini-btn" id="clearFilters" type="button">↺ Limpar filtros</button>
-    </div>
-  </div>
-
-</aside>
-
-<!-- MAIN -->
-<main class="main" role="main">
-
-  <header class="topbar">
-    <div>
-      <h1 class="page-title">Dashboard Financeiro</h1>
-      <p class="page-subtitle">Acompanhe suas finanças em tempo real</p>
-    </div>
-    <div class="live-indicator" aria-label="Dados em tempo real">
-      <span class="live-dot"></span>
-      AO VIVO
-    </div>
-  </header>
-
-  <!-- KPIs -->
-  <section class="kpi-grid" aria-label="Resumo financeiro">
-
-    <article class="card kpi kpi--blue">
-      <div class="kpi-head">
-        <span class="kpi-label">Saldo</span>
-        <span class="kpi-badge kpi-badge--blue">Período</span>
-      </div>
-      <h2 class="kpi-value" id="saldo">R$ 0</h2>
-      <p class="kpi-sub">Receitas − Despesas</p>
-      <div class="kpi-orb" aria-hidden="true"></div>
-    </article>
-
-    <article class="card kpi kpi--green">
-      <div class="kpi-head">
-        <span class="kpi-label">Receitas</span>
-        <span class="kpi-badge kpi-badge--green">Entrada</span>
-      </div>
-      <h2 class="kpi-value" id="receitas">R$ 0</h2>
-      <p class="kpi-sub" id="receitasCount">0 lançamentos</p>
-      <div class="kpi-orb" aria-hidden="true"></div>
-    </article>
-
-    <article class="card kpi kpi--red">
-      <div class="kpi-head">
-        <span class="kpi-label">Despesas</span>
-        <span class="kpi-badge kpi-badge--red">Saída</span>
-      </div>
-      <h2 class="kpi-value" id="despesas">R$ 0</h2>
-      <p class="kpi-sub" id="despesasCount">0 lançamentos</p>
-      <div class="kpi-orb" aria-hidden="true"></div>
-    </article>
-
-    <article class="card kpi kpi--purple">
-      <div class="kpi-head">
-        <span class="kpi-label">Investimentos</span>
-        <span class="kpi-badge kpi-badge--purple">Carteira</span>
-      </div>
-      <h2 class="kpi-value" id="investimentos">R$ 0</h2>
-      <p class="kpi-sub" id="investCount">0 posições</p>
-      <div class="kpi-orb" aria-hidden="true"></div>
-    </article>
-
-  </section>
-
-  <!-- PATRIMÔNIO E PLANEJAMENTO -->
-  <section class="wealth-section" aria-label="Patrimônio e planejamento financeiro">
-    <div class="section-head">
-      <div>
-        <h2 class="section-heading">Patrimônio e Planejamento</h2>
-        <p class="section-copy" id="wealthEmptyState">Adicione lançamentos para visualizar seu planejamento.</p>
-      </div>
-      <span class="chip chip--blue">Longo prazo</span>
-    </div>
-
-    <div class="kpi-grid wealth-grid">
-      <article class="card kpi wealth-card kpi--blue">
-        <div class="kpi-head">
-          <span class="kpi-label">Patrimônio líquido total</span>
-          <span class="kpi-badge kpi-badge--blue">Total</span>
-        </div>
-        <h2 class="kpi-value" id="netWorth">R$ 0</h2>
-        <p class="kpi-sub" id="netWorthSub">Ativos − passivos do período</p>
-        <div class="kpi-orb" aria-hidden="true"></div>
-      </article>
-
-      <article class="card kpi wealth-card kpi--green">
-        <div class="kpi-head">
-          <span class="kpi-label">Reserva de emergência</span>
-          <span class="kpi-badge kpi-badge--green">Cobertura</span>
-        </div>
-        <h2 class="kpi-value" id="emergencyReserve">0 meses</h2>
-        <p class="kpi-sub" id="emergencyReserveSub">Baseada nas despesas médias</p>
-        <div class="kpi-orb" aria-hidden="true"></div>
-      </article>
-
-      <article class="card kpi wealth-card kpi--purple">
-        <div class="kpi-head">
-          <span class="kpi-label">Taxa de poupança mensal</span>
-          <span class="kpi-badge kpi-badge--purple">Disciplina</span>
-        </div>
-        <h2 class="kpi-value" id="savingsRate">0,00%</h2>
-        <p class="kpi-sub" id="savingsRateSub">Receitas vs despesas/investimentos</p>
-        <div class="kpi-orb" aria-hidden="true"></div>
-      </article>
-
-      <article class="card kpi wealth-card kpi--amber">
-        <div class="kpi-head">
-          <span class="kpi-label">Meta financeira principal</span>
-          <span class="kpi-badge kpi-badge--amber">Objetivo</span>
-        </div>
-        <h2 class="kpi-value" id="mainFinancialGoal">R$ 0</h2>
-        <p class="kpi-sub" id="mainFinancialGoalSub">Configure em financialPlan/config</p>
-        <div class="kpi-orb" aria-hidden="true"></div>
-      </article>
-
-      <article class="card kpi wealth-card kpi--teal">
-        <div class="kpi-head">
-          <span class="kpi-label">Independência financeira</span>
-          <span class="kpi-badge kpi-badge--teal">Progresso</span>
-        </div>
-        <h2 class="kpi-value" id="financialIndependenceProgress">0,00%</h2>
-        <p class="kpi-sub" id="financialIndependenceSub">Até a meta de patrimônio</p>
-        <div class="progress-track" aria-hidden="true"><span id="financialIndependenceBar"></span></div>
-        <div class="kpi-orb" aria-hidden="true"></div>
-      </article>
-    </div>
-  </section>
-
-
-  <!-- CHARTS -->
-  <section class="charts-grid" aria-label="Gráficos">
-
-    <article class="card chart-card">
-      <div class="card-head">
-        <h3 class="card-title">Receitas × Despesas</h3>
-        <div class="card-actions">
-          <span class="chip chip--green">Receita</span>
-          <span class="chip chip--red">Despesa</span>
-        </div>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="barChart" role="img" aria-label="Gráfico de receitas e despesas"></canvas>
-      </div>
-    </article>
-
-    <article class="card chart-card">
-      <div class="card-head">
-        <h3 class="card-title">Distribuição</h3>
-        <span class="chip chip--muted">Receita / Despesa / Invest.</span>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="pieChart" role="img" aria-label="Gráfico de distribuição financeira"></canvas>
-      </div>
-    </article>
-
-
-    <article class="card chart-card">
-      <div class="card-head">
-        <h3 class="card-title">Evolução patrimonial mensal</h3>
-        <span class="chip chip--blue">Patrimônio</span>
-      </div>
-      <div class="chart-wrap chart-wrap--empty" id="netWorthTrendEmpty" data-empty="Adicione lançamentos para visualizar seu planejamento.">
-        <canvas id="netWorthTrendChart" role="img" aria-label="Gráfico de evolução patrimonial mensal"></canvas>
-      </div>
-    </article>
-
-    <article class="card chart-card">
-      <div class="card-head">
-        <h3 class="card-title">Patrimônio por classe de ativo</h3>
-        <span class="chip chip--purple">Alocação</span>
-      </div>
-      <div class="chart-wrap chart-wrap--empty" id="assetAllocationEmpty" data-empty="Adicione investimentos para visualizar a alocação.">
-        <canvas id="assetAllocationChart" role="img" aria-label="Gráfico de distribuição do patrimônio por classe de ativo"></canvas>
-      </div>
-    </article>
-
-    <article class="card chart-card chart-card--wide">
-      <div class="card-head">
-        <h3 class="card-title">Planejado vs realizado por mês</h3>
-        <span class="chip chip--green">Planejamento</span>
-      </div>
-      <div class="chart-wrap chart-wrap--empty" id="planVsActualEmpty" data-empty="Configure financialPlan/config e adicione lançamentos para comparar o plano.">
-        <canvas id="planVsActualChart" role="img" aria-label="Gráfico de planejado versus realizado por mês"></canvas>
-      </div>
-    </article>
-
-  </section>
-
-  <!-- TABLE -->
-  <section class="card table-card" aria-label="Lançamentos">
-    <div class="card-head">
-      <h3 class="card-title">Lançamentos</h3>
-      <div class="card-actions">
-        <span class="chip chip--muted" id="tableCount">0 registros</span>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Valor</th>
-            <th class="th-actions">Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabela"></tbody>
-      </table>
-    </div>
-  </section>
-
-</main>
-```
-
-  </div>
-
-  <!-- MODAL EDIT -->
-
-  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-content">
-      <div class="modal-head">
-        <h3 id="modalTitle">Editar Lançamento</h3>
-        <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
-      </div>
-
-```
-  <label class="field">
-    <span class="field-label">Descrição</span>
-    <input type="text" id="editDescricao" autocomplete="off">
-  </label>
-
-  <label class="field">
-    <span class="field-label">Valor</span>
-    <input type="number" id="editValor" inputmode="decimal" step="0.01" min="0">
-  </label>
-
-  <button id="saveEdit" class="btn btn-primary" type="button" style="width:100%; margin-top:12px;">
-    Salvar alterações
-  </button>
-</div>
-```
-
-  </div>
-
-  <script type="module" src="firebase.js"></script>
-
   <script type="module" src="app.js"></script>
-
-  <script>
-    // Modal close handlers
-    const modal = document.getElementById("modal");
-    const closeModal = document.getElementById("closeModal");
-    if (closeModal) closeModal.onclick = () => modal.classList.remove("is-open");
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.classList.remove("is-open");
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && modal.classList.contains("is-open")) {
-        modal.classList.remove("is-open");
-      }
-    });
-  </script>
-
 </body>
 </html>
