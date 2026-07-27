@@ -179,6 +179,44 @@
     </div>
   </div>
 
+
+  <!-- INVESTMENT PLAN CHAT -->
+  <div class="sidebar-section plan-chat" aria-label="Chat do plano de investimento">
+    <div class="section-title">Chat do plano de investimento</div>
+    <p class="sidebar-hint">Edite os campos abaixo: cada input atualiza o dashboard e salva o plano em <code>financialPlan/config</code>.</p>
+
+    <label class="field">
+      <span class="field-label">Renda mensal prevista</span>
+      <input type="number" id="planExpectedIncome" data-plan-field="expectedMonthlyIncome" placeholder="Ex: 10000" inputmode="decimal" step="0.01" min="0">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Despesas previstas</span>
+      <input type="number" id="planExpectedExpenses" data-plan-field="expectedExpenses" placeholder="Ex: 6500" inputmode="decimal" step="0.01" min="0">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Meta de patrimônio</span>
+      <input type="number" id="planNetWorthGoal" data-plan-field="netWorthGoal" placeholder="Ex: 1000000" inputmode="decimal" step="0.01" min="0">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Reserva desejada</span>
+      <input type="number" id="planDesiredReserve" data-plan-field="desiredEmergencyReserve" placeholder="Ex: 45000" inputmode="decimal" step="0.01" min="0">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Prazo da meta</span>
+      <input type="date" id="planGoalDeadline" data-plan-field="goalDeadline">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Premissas / mensagem do chat</span>
+      <textarea id="planReturnAssumptions" data-plan-field="returnAssumptions" rows="3" placeholder="Ex: aportar mensalmente, rentabilidade real de 4% a.a."></textarea>
+    </label>
+  </div>
+
+
 </aside>
 
 <!-- MAIN -->
@@ -240,6 +278,71 @@
 
   </section>
 
+  <!-- PATRIMÔNIO E PLANEJAMENTO -->
+  <section class="wealth-section" aria-label="Patrimônio e planejamento financeiro">
+    <div class="section-head">
+      <div>
+        <h2 class="section-heading">Patrimônio e Planejamento</h2>
+        <p class="section-copy" id="wealthEmptyState">Adicione lançamentos para visualizar seu planejamento.</p>
+      </div>
+      <span class="chip chip--blue">Longo prazo</span>
+    </div>
+
+    <div class="kpi-grid wealth-grid">
+      <article class="card kpi wealth-card kpi--blue">
+        <div class="kpi-head">
+          <span class="kpi-label">Patrimônio líquido total</span>
+          <span class="kpi-badge kpi-badge--blue">Total</span>
+        </div>
+        <h2 class="kpi-value" id="netWorth">R$ 0</h2>
+        <p class="kpi-sub" id="netWorthSub">Ativos − passivos do período</p>
+        <div class="kpi-orb" aria-hidden="true"></div>
+      </article>
+
+      <article class="card kpi wealth-card kpi--green">
+        <div class="kpi-head">
+          <span class="kpi-label">Reserva de emergência</span>
+          <span class="kpi-badge kpi-badge--green">Cobertura</span>
+        </div>
+        <h2 class="kpi-value" id="emergencyReserve">0 meses</h2>
+        <p class="kpi-sub" id="emergencyReserveSub">Baseada nas despesas médias</p>
+        <div class="kpi-orb" aria-hidden="true"></div>
+      </article>
+
+      <article class="card kpi wealth-card kpi--purple">
+        <div class="kpi-head">
+          <span class="kpi-label">Taxa de poupança mensal</span>
+          <span class="kpi-badge kpi-badge--purple">Disciplina</span>
+        </div>
+        <h2 class="kpi-value" id="savingsRate">0,00%</h2>
+        <p class="kpi-sub" id="savingsRateSub">Receitas vs despesas/investimentos</p>
+        <div class="kpi-orb" aria-hidden="true"></div>
+      </article>
+
+      <article class="card kpi wealth-card kpi--amber">
+        <div class="kpi-head">
+          <span class="kpi-label">Meta financeira principal</span>
+          <span class="kpi-badge kpi-badge--amber">Objetivo</span>
+        </div>
+        <h2 class="kpi-value" id="mainFinancialGoal">R$ 0</h2>
+        <p class="kpi-sub" id="mainFinancialGoalSub">Configure em financialPlan/config</p>
+        <div class="kpi-orb" aria-hidden="true"></div>
+      </article>
+
+      <article class="card kpi wealth-card kpi--teal">
+        <div class="kpi-head">
+          <span class="kpi-label">Independência financeira</span>
+          <span class="kpi-badge kpi-badge--teal">Progresso</span>
+        </div>
+        <h2 class="kpi-value" id="financialIndependenceProgress">0,00%</h2>
+        <p class="kpi-sub" id="financialIndependenceSub">Até a meta de patrimônio</p>
+        <div class="progress-track" aria-hidden="true"><span id="financialIndependenceBar"></span></div>
+        <div class="kpi-orb" aria-hidden="true"></div>
+      </article>
+    </div>
+  </section>
+
+
   <!-- CHARTS -->
   <section class="charts-grid" aria-label="Gráficos">
 
@@ -263,6 +366,37 @@
       </div>
       <div class="chart-wrap">
         <canvas id="pieChart" role="img" aria-label="Gráfico de distribuição financeira"></canvas>
+      </div>
+    </article>
+
+
+    <article class="card chart-card">
+      <div class="card-head">
+        <h3 class="card-title">Evolução patrimonial mensal</h3>
+        <span class="chip chip--blue">Patrimônio</span>
+      </div>
+      <div class="chart-wrap chart-wrap--empty" id="netWorthTrendEmpty" data-empty="Adicione lançamentos para visualizar seu planejamento.">
+        <canvas id="netWorthTrendChart" role="img" aria-label="Gráfico de evolução patrimonial mensal"></canvas>
+      </div>
+    </article>
+
+    <article class="card chart-card">
+      <div class="card-head">
+        <h3 class="card-title">Patrimônio por classe de ativo</h3>
+        <span class="chip chip--purple">Alocação</span>
+      </div>
+      <div class="chart-wrap chart-wrap--empty" id="assetAllocationEmpty" data-empty="Adicione investimentos para visualizar a alocação.">
+        <canvas id="assetAllocationChart" role="img" aria-label="Gráfico de distribuição do patrimônio por classe de ativo"></canvas>
+      </div>
+    </article>
+
+    <article class="card chart-card chart-card--wide">
+      <div class="card-head">
+        <h3 class="card-title">Planejado vs realizado por mês</h3>
+        <span class="chip chip--green">Planejamento</span>
+      </div>
+      <div class="chart-wrap chart-wrap--empty" id="planVsActualEmpty" data-empty="Configure financialPlan/config e adicione lançamentos para comparar o plano.">
+        <canvas id="planVsActualChart" role="img" aria-label="Gráfico de planejado versus realizado por mês"></canvas>
       </div>
     </article>
 

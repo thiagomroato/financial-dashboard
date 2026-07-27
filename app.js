@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   serverTimestamp,
   query,
@@ -39,6 +40,14 @@ function showToast(message, type = "info", duration = 3000) {
 const quoteCache = new Map(); // symbol => { price, updatedAt }
 const QUOTE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 const FX_USD_BRL_DOC_ID = "USD-BRL";
+const DEFAULT_PLAN_CONFIG = {
+  expectedMonthlyIncome: 0,
+  expectedExpenses: 0,
+  netWorthGoal: 0,
+  desiredEmergencyReserve: 0,
+  goalDeadline: null,
+  returnAssumptions: null
+};
 
 // ==============================
 // FORMATTERS
@@ -128,6 +137,19 @@ const despesasCount   = document.getElementById("despesasCount");
 const investCount     = document.getElementById("investCount");
 const tableCountEl    = document.getElementById("tableCount");
 
+const netWorthEl = document.getElementById("netWorth");
+const netWorthSubEl = document.getElementById("netWorthSub");
+const emergencyReserveEl = document.getElementById("emergencyReserve");
+const emergencyReserveSubEl = document.getElementById("emergencyReserveSub");
+const savingsRateEl = document.getElementById("savingsRate");
+const savingsRateSubEl = document.getElementById("savingsRateSub");
+const mainFinancialGoalEl = document.getElementById("mainFinancialGoal");
+const mainFinancialGoalSubEl = document.getElementById("mainFinancialGoalSub");
+const financialIndependenceProgressEl = document.getElementById("financialIndependenceProgress");
+const financialIndependenceSubEl = document.getElementById("financialIndependenceSub");
+const financialIndependenceBarEl = document.getElementById("financialIndependenceBar");
+const wealthEmptyStateEl = document.getElementById("wealthEmptyState");
+
 const modalEl         = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
 const editValorEl     = document.getElementById("editValor");
@@ -194,6 +216,7 @@ let currentAddType = null;
 let investKind = "stock";
 let stockMarket = "BR";
 let despesaModoPagamento = "pix";
+let currentPlanConfig = { ...DEFAULT_PLAN_CONFIG };
 
 // ==============================
 // UI HELPERS
@@ -462,15 +485,85 @@ function getCurrentValueForInvestmentRow(row) {
   return usdToBrl(qtd * q.price, fxRate);
 }
 
+
+
+// ==============================
+// PURE FINANCIAL PLANNING CALCULATIONS
+// ==============================
+function calculateNetWorth(rows) {
+  return rows.reduce((acc, row) => {
+    const value = Number(row.valor || 0);
+    if (!Number.isFinite(value)) return acc;
+    if (row.tipo === "receita") return acc + value;
+    if (row.tipo === "despesa") return acc - value;
+    if (row.tipo === "investimento") return acc + value;
+    return acc;
+  }, 0);
+}
+
+function calculateSavingsRate(rows) {
+  const totals = rows.reduce((acc, row) => {
+    const value = Number(row.valor || 0);
+    if (!Number.isFinite(value)) return acc;
+    if (row.tipo === "receita") acc.income += value;
+    if (row.tipo === "despesa") acc.expenses += value;
+    if (row.tipo === "investimento") acc.investments += value;
+    return acc;
+  }, { income: 0, expenses: 0, investments: 0 });
+
+  if (totals.income <= 0) return { rate: 0, income: totals.income, saved: 0, expenses: totals.expenses, investments: totals.investments };
+  const saved = Math.max(totals.income - totals.expenses, totals.investments);
+  return { rate: saved / totals.income, income: totals.income, saved, expenses: totals.expenses, investments: totals.investments };
+}
+
+function calculateEmergencyReserveCoverage(rows, monthlyExpenses) {
+  const expenses = Number(monthlyExpenses);
+  const reserve = rows
+    .filter(row => row.tipo === "investimento")
+    .reduce((acc, row) => acc + (Number.isFinite(Number(row.valor)) ? Number(row.valor) : 0), 0);
+  return { reserve, monthlyExpenses: Number.isFinite(expenses) && expenses > 0 ? expenses : 0, months: Number.isFinite(expenses) && expenses > 0 ? reserve / expenses : 0 };
+}
+
+function calculateAssetAllocation(rows) {
+  const buckets = rows.reduce((acc, row) => {
+    if (row.tipo !== "investimento") return acc;
+    const key = row.investKind === "cdb" ? "Renda fixa" : row.market === "US" ? "Ações EUA" : "Ações Brasil";
+    acc[key] = (acc[key] || 0) + (Number.isFinite(Number(row.valor)) ? Number(row.valor) : 0);
+    return acc;
+  }, {});
+  return Object.entries(buckets).map(([label, value]) => ({ label, value }));
+}
+
+function calculatePlanVsActual(rows, planConfig) {
+  const plannedIncome = Number(planConfig?.expectedMonthlyIncome || 0);
+  const plannedExpenses = Number(planConfig?.expectedExpenses || 0);
+  const targetYear = Number(planConfig?.year || new Date().getFullYear());
+  return monthNames.map((month, index) => {
+    const monthRows = rows.filter(row => {
+      const d = clampDate(row.dateRef || row.createdAt);
+      return d && d.getFullYear() === targetYear && d.getMonth() === index;
+    });
+    const actualIncome = monthRows.filter(row => row.tipo === "receita").reduce((acc, row) => acc + Number(row.valor || 0), 0);
+    const actualExpenses = monthRows.filter(row => row.tipo === "despesa").reduce((acc, row) => acc + Number(row.valor || 0), 0);
+    return { month: month.slice(0, 3), planned: plannedIncome - plannedExpenses, actual: actualIncome - actualExpenses };
+  });
+}
+
 // ==============================
 // CHARTS
 // ==============================
 let lineChart = null;
 let pieChart  = null;
+let netWorthTrendChart = null;
+let assetAllocationChart = null;
+let planVsActualChart = null;
 
 function destroyCharts() {
   if (lineChart) { lineChart.destroy(); lineChart = null; }
   if (pieChart)  { pieChart.destroy();  pieChart  = null; }
+  if (netWorthTrendChart) { netWorthTrendChart.destroy(); netWorthTrendChart = null; }
+  if (assetAllocationChart) { assetAllocationChart.destroy(); assetAllocationChart = null; }
+  if (planVsActualChart) { planVsActualChart.destroy(); planVsActualChart = null; }
 }
 
 function chartDefaults() {
@@ -518,6 +611,96 @@ function sumInvestmentsValue(rows) {
     const atual = getCurrentValueForInvestmentRow(r);
     return acc + (atual != null ? atual : Number(r.valor || 0));
   }, 0);
+}
+
+
+function setEmptyChartState(wrapperId, isEmpty) {
+  const el = document.getElementById(wrapperId);
+  if (el) el.classList.toggle("is-empty", isEmpty);
+}
+
+function getAverageMonthlyExpenses(rows) {
+  const months = new Set();
+  let expenses = 0;
+  rows.forEach(row => {
+    const d = clampDate(row.dateRef || row.createdAt);
+    if (!d) return;
+    months.add(`${d.getFullYear()}-${d.getMonth()}`);
+    if (row.tipo === "despesa") expenses += Number(row.valor || 0);
+  });
+  return months.size ? expenses / months.size : 0;
+}
+
+function renderWealthPlanning(rows, planConfig = currentPlanConfig) {
+  const hasRows = rows.length > 0;
+  const netWorth = calculateNetWorth(rows);
+  const savings = calculateSavingsRate(rows);
+  const plannedMonthlyExpenses = Number(planConfig?.expectedExpenses || 0);
+  const monthlyExpenses = plannedMonthlyExpenses > 0 ? plannedMonthlyExpenses : getAverageMonthlyExpenses(rows);
+  const reserve = calculateEmergencyReserveCoverage(rows, monthlyExpenses);
+  const goal = Number(planConfig?.netWorthGoal || 0);
+  const progress = goal > 0 ? Math.min(Math.max(netWorth / goal, 0), 1) : 0;
+  const desiredReserve = Number(planConfig?.desiredEmergencyReserve || 0);
+  const deadline = toDateMaybe(planConfig?.goalDeadline) || clampDate(planConfig?.goalDeadline);
+
+  if (wealthEmptyStateEl) {
+    wealthEmptyStateEl.textContent = hasRows ? "Visão consolidada baseada nos lançamentos carregados." : "Adicione lançamentos para visualizar seu planejamento.";
+  }
+  if (netWorthEl) netWorthEl.textContent = brl(netWorth);
+  if (netWorthSubEl) netWorthSubEl.textContent = hasRows ? "Receitas + investimentos − despesas" : "Aguardando lançamentos";
+  if (emergencyReserveEl) emergencyReserveEl.textContent = `${reserve.months.toFixed(1).replace(".", ",")} meses`;
+  if (emergencyReserveSubEl) emergencyReserveSubEl.textContent = desiredReserve > 0 ? `${brl(reserve.reserve)} de ${brl(desiredReserve)} desejados` : `${brl(reserve.reserve)} reservados`;
+  if (savingsRateEl) savingsRateEl.textContent = pct(savings.rate);
+  if (savingsRateSubEl) savingsRateSubEl.textContent = savings.income > 0 ? `${brl(savings.saved)} poupados de ${brl(savings.income)}` : "Sem receitas no período";
+  if (mainFinancialGoalEl) mainFinancialGoalEl.textContent = brl(goal);
+  if (mainFinancialGoalSubEl) mainFinancialGoalSubEl.textContent = deadline ? `Prazo: ${deadline.toLocaleDateString("pt-BR")}` : "Configure em financialPlan/config";
+  if (financialIndependenceProgressEl) financialIndependenceProgressEl.textContent = pct(progress);
+  if (financialIndependenceSubEl) financialIndependenceSubEl.textContent = goal > 0 ? `${brl(Math.max(goal - netWorth, 0))} restantes` : "Defina a meta de patrimônio";
+  if (financialIndependenceBarEl) financialIndependenceBarEl.style.width = `${progress * 100}%`;
+}
+
+function renderPlanningCharts(rows, planConfig = currentPlanConfig) {
+  if (typeof Chart === "undefined") return;
+  const netWorthCtx = document.getElementById("netWorthTrendChart");
+  const allocationCtx = document.getElementById("assetAllocationChart");
+  const planCtx = document.getElementById("planVsActualChart");
+  if (!netWorthCtx || !allocationCtx || !planCtx) return;
+
+  const monthlyNetWorth = monthNames.map((month, index) => {
+    const untilMonth = rows.filter(row => {
+      const d = clampDate(row.dateRef || row.createdAt);
+      return d && (d.getFullYear() < selectedYear || (d.getFullYear() === selectedYear && d.getMonth() <= index));
+    });
+    return { month: month.slice(0, 3), value: calculateNetWorth(untilMonth) };
+  });
+  const allocation = calculateAssetAllocation(rows);
+  const planVsActual = calculatePlanVsActual(rows, { ...planConfig, year: selectedYear });
+
+  setEmptyChartState("netWorthTrendEmpty", !rows.length);
+  setEmptyChartState("assetAllocationEmpty", !allocation.length);
+  setEmptyChartState("planVsActualEmpty", !rows.length || (!Number(planConfig?.expectedMonthlyIncome) && !Number(planConfig?.expectedExpenses)));
+
+  const commonOptions = { responsive: true, maintainAspectRatio: false, animation: { duration: 500, easing: "easeOutQuart" } };
+  const gridColor = "rgba(255,255,255,.05)";
+  const axisColor = "rgba(232,234,240,.3)";
+
+  netWorthTrendChart = new Chart(netWorthCtx, {
+    type: "line",
+    data: { labels: monthlyNetWorth.map(x => x.month), datasets: [{ label: "Patrimônio", data: monthlyNetWorth.map(x => x.value), borderColor: "rgba(34,211,238,1)", backgroundColor: "rgba(34,211,238,.12)", borderWidth: 2, tension: .35, fill: true }] },
+    options: { ...commonOptions, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Patrimônio: ${brl(ctx.parsed.y)}` } } }, scales: { x: { grid: { color: gridColor }, ticks: { color: axisColor } }, y: { grid: { color: gridColor }, ticks: { color: axisColor, callback: v => brl(v) } } } }
+  });
+
+  assetAllocationChart = new Chart(allocationCtx, {
+    type: "doughnut",
+    data: { labels: allocation.map(x => x.label), datasets: [{ data: allocation.map(x => x.value), backgroundColor: ["rgba(124,143,255,.85)", "rgba(192,132,252,.85)", "rgba(52,211,153,.85)", "rgba(251,191,36,.85)"], borderColor: "rgba(6,8,16,.9)", borderWidth: 3 }] },
+    options: { ...commonOptions, cutout: "64%", plugins: { legend: { position: "bottom", labels: { color: "rgba(232,234,240,.6)", usePointStyle: true } }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${brl(ctx.parsed)}` } } } }
+  });
+
+  planVsActualChart = new Chart(planCtx, {
+    type: "bar",
+    data: { labels: planVsActual.map(x => x.month), datasets: [{ label: "Planejado", data: planVsActual.map(x => x.planned), backgroundColor: "rgba(124,143,255,.55)", borderRadius: 8 }, { label: "Realizado", data: planVsActual.map(x => x.actual), backgroundColor: "rgba(52,211,153,.65)", borderRadius: 8 }] },
+    options: { ...commonOptions, plugins: { legend: { labels: { color: "rgba(232,234,240,.6)" } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${brl(ctx.parsed.y)}` } } }, scales: { x: { grid: { color: gridColor }, ticks: { color: axisColor } }, y: { grid: { color: gridColor }, ticks: { color: axisColor, callback: v => brl(v) } } } }
+  });
 }
 
 function renderCharts(filteredRows) {
@@ -811,7 +994,9 @@ function renderTableAndKpis(filteredRows) {
 function renderAll(allRows) {
   const filteredRows = computeFilteredRows(allRows);
   renderTableAndKpis(filteredRows);
+  renderWealthPlanning(filteredRows, currentPlanConfig);
   renderCharts(filteredRows);
+  renderPlanningCharts(filteredRows, currentPlanConfig);
 }
 
 // ==============================
@@ -1061,6 +1246,108 @@ clearFiltersBtn?.addEventListener("click", async () => {
   setDDOpen(yearDD,  false);
   setDDOpen(monthDD, false);
   if (window.__ALL_ROWS__) await ensureQuotesThenRerender(window.__ALL_ROWS__);
+});
+
+
+
+function parsePlanValue(field, value) {
+  if (["expectedMonthlyIncome", "expectedExpenses", "netWorthGoal", "desiredEmergencyReserve"].includes(field)) {
+    const numeric = Number(String(value ?? "").replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+  if (field === "goalDeadline" && typeof value === "string" && value) {
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? value : date;
+  }
+  return value ?? null;
+}
+
+function normalizePlanPatch(data = {}) {
+  const aliases = {
+    expectedMonthlyIncome: ["expectedMonthlyIncome", "rendaMensalPrevista"],
+    expectedExpenses: ["expectedExpenses", "despesasPrevistas"],
+    netWorthGoal: ["netWorthGoal", "metaPatrimonio"],
+    desiredEmergencyReserve: ["desiredEmergencyReserve", "reservaDesejada"],
+    goalDeadline: ["goalDeadline", "prazoMeta"],
+    returnAssumptions: ["returnAssumptions", "premissasRentabilidade"]
+  };
+
+  return Object.entries(aliases).reduce((patch, [field, keys]) => {
+    const sourceKey = keys.find(key => Object.prototype.hasOwnProperty.call(data, key));
+    if (sourceKey) patch[field] = parsePlanValue(field, data[sourceKey]);
+    return patch;
+  }, {});
+}
+
+let persistPlanInputTimer = null;
+function updateFinancialPlanDashboard(planPatch = {}, { persist = false } = {}) {
+  const normalizedPatch = normalizePlanPatch(planPatch);
+  if (!Object.keys(normalizedPatch).length) return;
+
+  currentPlanConfig = { ...currentPlanConfig, ...normalizedPatch };
+  syncPlanInputs(currentPlanConfig);
+  renderAll(window.__ALL_ROWS__ || []);
+
+  if (!persist) return;
+  clearTimeout(persistPlanInputTimer);
+  persistPlanInputTimer = setTimeout(() => {
+    setDoc(financialPlanRef, currentPlanConfig, { merge: true }).catch(error => {
+      console.warn("Financial plan input could not be persisted:", error?.message || error);
+    });
+  }, 350);
+}
+
+function getPlanPatchFromEvent(event) {
+  const detail = event?.detail || event?.data || {};
+  return detail.planConfig || detail.financialPlan || detail.investmentPlan || detail;
+}
+
+["financialPlan:input", "financialPlan:update", "investmentPlan:input", "investmentPlan:update"].forEach(eventName => {
+  window.addEventListener(eventName, event => updateFinancialPlanDashboard(getPlanPatchFromEvent(event)));
+});
+
+window.addEventListener("message", event => {
+  const payload = getPlanPatchFromEvent(event);
+  if (payload?.type && !String(payload.type).includes("financialPlan") && !String(payload.type).includes("investmentPlan")) return;
+  updateFinancialPlanDashboard(payload);
+});
+
+document.addEventListener("input", event => {
+  const field = event.target?.dataset?.planField;
+  if (!field) return;
+  updateFinancialPlanDashboard({ [field]: event.target.value }, { persist: true });
+});
+
+
+function formatPlanInputValue(field, value) {
+  if (value == null) return "";
+  if (field === "goalDeadline") {
+    const d = toDateMaybe(value) || clampDate(value);
+    if (d) return d.toISOString().slice(0, 10);
+    return typeof value === "string" ? value.slice(0, 10) : "";
+  }
+  return String(value);
+}
+
+function syncPlanInputs(planConfig) {
+  document.querySelectorAll("[data-plan-field]").forEach(input => {
+    const field = input.dataset.planField;
+    if (!field || document.activeElement === input) return;
+    input.value = formatPlanInputValue(field, planConfig?.[field]);
+  });
+}
+
+function normalizePlanConfig(data = {}) {
+  return { ...DEFAULT_PLAN_CONFIG, ...normalizePlanPatch(data) };
+}
+
+const financialPlanRef = doc(db, "financialPlan", "config");
+onSnapshot(financialPlanRef, snapshot => {
+  currentPlanConfig = snapshot.exists() ? normalizePlanConfig(snapshot.data()) : { ...DEFAULT_PLAN_CONFIG };
+  syncPlanInputs(currentPlanConfig);
+  if (window.__ALL_ROWS__) renderAll(window.__ALL_ROWS__);
+}, error => {
+  console.warn("Financial plan config unavailable:", error?.message || error);
 });
 
 // ==============================
