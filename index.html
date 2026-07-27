@@ -40,6 +40,13 @@
     </aside>
 
     <main class="main-content">
+      <header class="topbar">
+        <div>
+          <span class="status-dot"></span> Plano atualizado • Buy & Hold • Longo prazo
+        </div>
+        <a class="topbar-action" href="#analista">Ver recomendações</a>
+      </header>
+
       <section class="hero" id="dashboard">
         <div>
           <p class="eyebrow">Dashboard financeiro pessoal</p>
@@ -50,6 +57,8 @@
           <span>Meta principal</span>
           <strong>R$ 10.000/mês</strong>
           <small>renda passiva recorrente</small>
+          <div class="goal-progress"><span style="width: 8%"></span></div>
+          <em>Foco: FIIs, dividendos e reinvestimento</em>
         </div>
       </section>
 
@@ -63,11 +72,13 @@
       </section>
 
       <section class="charts-grid">
-        <article class="card chart-card"><div class="card-head"><h2>Evolução patrimonial</h2><span>projeção</span></div><canvas id="wealthChart"></canvas></article>
-        <article class="card chart-card"><div class="card-head"><h2>Distribuição da carteira</h2><span>alvo x atual</span></div><canvas id="allocationChart"></canvas></article>
+        <article class="card chart-card chart-card--featured"><div class="card-head"><h2>Evolução patrimonial</h2><span>projeção de 60 meses</span></div><canvas id="wealthChart"></canvas></article>
+        <article class="card chart-card"><div class="card-head"><h2>Distribuição atual</h2><span>carteira</span></div><canvas id="allocationChart"></canvas></article>
         <article class="card chart-card"><div class="card-head"><h2>Dividendos recebidos</h2><span>trilha de renda</span></div><canvas id="dividendChart"></canvas></article>
         <article class="card chart-card"><div class="card-head"><h2>Progresso até R$ 1 milhão</h2><span>meta</span></div><canvas id="goalChart"></canvas></article>
       </section>
+
+      <section class="section-title-row"><div><p class="eyebrow">Carteira</p><h2>Investimentos e alocação</h2></div><span>Plano de aportes: R$ 1.300/mês</span></section>
 
       <section class="module-grid" id="investimentos">
         <article class="card table-card wide">
@@ -80,6 +91,8 @@
         </article>
       </section>
 
+      <section class="section-title-row"><div><p class="eyebrow">Renda passiva</p><h2>FIIs e dividendos</h2></div><span>Meta final: R$ 10.000/mês</span></section>
+
       <section class="module-grid" id="fiis">
         <article class="card wide">
           <div class="card-head"><h2>Módulo FIIs</h2><span>renda mensal</span></div>
@@ -88,13 +101,15 @@
         </article>
       </section>
 
-      <section class="module-grid three-cols" id="acoes">
+      <section class="module-grid three-cols bento" id="acoes">
         <article class="card"><h2>Ações Brasil</h2><p>Controle por empresa, código, setor, quantidade, preço médio, dividendos e valorização.</p></article>
         <article class="card" id="exterior"><h2>Exterior</h2><p><strong>Procter & Gamble (PG):</strong> US$ 474,14. Aporte mensal planejado de R$ 200 para exposição internacional.</p></article>
         <article class="card" id="fluxo"><h2>Fluxo de caixa</h2><p>Receitas, despesas, aportes e sobras mensais consolidados para manter disciplina financeira.</p></article>
       </section>
 
-      <section class="module-grid" id="financiamento">
+      <section class="section-title-row"><div><p class="eyebrow">Imóvel</p><h2>Financiamento e patrimônio imobiliário</h2></div><span>Monitoramento SAC</span></section>
+
+      <section class="module-grid financing-grid" id="financiamento">
         <article class="card table-card wide">
           <div class="card-head"><h2>Patrimônio imobiliário</h2><span>SAC • 10,654% a.a.</span></div>
           <table><tbody id="propertyRows"></tbody></table>
