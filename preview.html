@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#060810"/>
+  <title>Preview — Patrimônio e Planejamento</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    body { min-height: 100vh; }
+    .preview-shell { max-width: 1180px; margin: 0 auto; padding: 28px 18px 42px; position: relative; z-index: 1; }
+    .preview-note { margin: 0 0 16px; color: var(--text-secondary); font-size: 13px; }
+    .preview-chart {
+      height: 260px;
+      margin: 10px 14px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,.08);
+      background:
+        linear-gradient(180deg, transparent 0 24%, rgba(255,255,255,.04) 25%, transparent 26% 49%, rgba(255,255,255,.04) 50%, transparent 51% 74%, rgba(255,255,255,.04) 75%, transparent 76%),
+        radial-gradient(ellipse at 15% 80%, rgba(34,211,238,.30), transparent 28%),
+        radial-gradient(ellipse at 85% 30%, rgba(124,143,255,.24), transparent 32%),
+        rgba(6,8,16,.38);
+      display: grid;
+      place-items: center;
+      color: var(--text-secondary);
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .preview-bars { display: flex; align-items: end; justify-content: center; gap: 10px; height: 160px; width: min(560px, 88%); }
+    .preview-bars span { width: 30px; border-radius: 9px 9px 3px 3px; background: linear-gradient(180deg, var(--green), rgba(52,211,153,.18)); }
+    .preview-donut { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--blue) 0 44%, var(--purple) 44% 72%, var(--green) 72% 100%); position: relative; }
+    .preview-donut::after { content: ""; position: absolute; inset: 34px; border-radius: 50%; background: #080b14; border: 1px solid rgba(255,255,255,.08); }
+  </style>
+</head>
+<body>
+  <main class="main preview-shell" role="main">
+    <header class="topbar">
+      <div>
+        <h1 class="page-title">Preview — Patrimônio e Planejamento</h1>
+        <p class="page-subtitle">Mock estático para validar a nova área patrimonial sem depender do Firestore.</p>
+      </div>
+      <div class="live-indicator" aria-label="Preview estático">
+        <span class="live-dot"></span>
+        PREVIEW
+      </div>
+    </header>
+
+    <p class="preview-note">Abra este arquivo no navegador para revisar visualmente os cards e gráficos adicionados ao dashboard.</p>
+
+    <section class="wealth-section" aria-label="Patrimônio e planejamento financeiro">
+      <div class="section-head">
+        <div>
+          <h2 class="section-heading">Patrimônio e Planejamento</h2>
+          <p class="section-copy">Visão consolidada baseada nos lançamentos carregados.</p>
+        </div>
+        <span class="chip chip--blue">Longo prazo</span>
+      </div>
+
+      <div class="kpi-grid wealth-grid">
+        <article class="card kpi wealth-card kpi--blue">
+          <div class="kpi-head"><span class="kpi-label">Patrimônio líquido total</span><span class="kpi-badge kpi-badge--blue">Total</span></div>
+          <h2 class="kpi-value">R$ 186.420,00</h2>
+          <p class="kpi-sub">Receitas + investimentos − despesas</p>
+          <div class="kpi-orb" aria-hidden="true"></div>
+        </article>
+        <article class="card kpi wealth-card kpi--green">
+          <div class="kpi-head"><span class="kpi-label">Reserva de emergência</span><span class="kpi-badge kpi-badge--green">Cobertura</span></div>
+          <h2 class="kpi-value">8,4 meses</h2>
+          <p class="kpi-sub">R$ 42.000,00 de R$ 45.000,00 desejados</p>
+          <div class="kpi-orb" aria-hidden="true"></div>
+        </article>
+        <article class="card kpi wealth-card kpi--purple">
+          <div class="kpi-head"><span class="kpi-label">Taxa de poupança mensal</span><span class="kpi-badge kpi-badge--purple">Disciplina</span></div>
+          <h2 class="kpi-value">31,50%</h2>
+          <p class="kpi-sub">R$ 3.150,00 poupados de R$ 10.000,00</p>
+          <div class="kpi-orb" aria-hidden="true"></div>
+        </article>
+        <article class="card kpi wealth-card kpi--amber">
+          <div class="kpi-head"><span class="kpi-label">Meta financeira principal</span><span class="kpi-badge kpi-badge--amber">Objetivo</span></div>
+          <h2 class="kpi-value">R$ 1.000.000,00</h2>
+          <p class="kpi-sub">Prazo: 31/12/2035</p>
+          <div class="kpi-orb" aria-hidden="true"></div>
+        </article>
+        <article class="card kpi wealth-card kpi--teal">
+          <div class="kpi-head"><span class="kpi-label">Independência financeira</span><span class="kpi-badge kpi-badge--teal">Progresso</span></div>
+          <h2 class="kpi-value">18,64%</h2>
+          <p class="kpi-sub">R$ 813.580,00 restantes</p>
+          <div class="progress-track" aria-hidden="true"><span style="width:18.64%"></span></div>
+          <div class="kpi-orb" aria-hidden="true"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="charts-grid" aria-label="Prévia dos gráficos patrimoniais">
+      <article class="card chart-card">
+        <div class="card-head"><h3 class="card-title">Evolução patrimonial mensal</h3><span class="chip chip--blue">Patrimônio</span></div>
+        <div class="preview-chart"><div class="preview-bars"><span style="height:45%"></span><span style="height:52%"></span><span style="height:58%"></span><span style="height:66%"></span><span style="height:74%"></span><span style="height:82%"></span></div></div>
+      </article>
+      <article class="card chart-card">
+        <div class="card-head"><h3 class="card-title">Patrimônio por classe de ativo</h3><span class="chip chip--purple">Alocação</span></div>
+        <div class="preview-chart"><div class="preview-donut" aria-hidden="true"></div></div>
+      </article>
+      <article class="card chart-card chart-card--wide">
+        <div class="card-head"><h3 class="card-title">Planejado vs realizado por mês</h3><span class="chip chip--green">Planejamento</span></div>
+        <div class="preview-chart">Planejado vs realizado — mock visual</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
