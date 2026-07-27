@@ -931,6 +931,47 @@ input[type=number] { -moz-appearance: textfield; }
   z-index: 2;
 }
 
+
+.plan-summary {
+  overflow: hidden;
+}
+
+.plan-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.plan-summary-item {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(6,8,16,.32);
+}
+
+.plan-summary-item span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.plan-summary-item strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.plan-summary-item--wide {
+  grid-column: span 2;
+}
+
 /* ==============================
    CARDS
    ============================== */
@@ -1297,6 +1338,7 @@ tbody td:last-child { text-align: right; }
 @media (max-width: 1200px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .wealth-grid { grid-template-columns: repeat(2, 1fr); }
+  .plan-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .charts-grid { grid-template-columns: 1fr; }
 }
 
@@ -1347,6 +1389,8 @@ tbody td:last-child { text-align: right; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .wealth-grid { grid-template-columns: 1fr; }
   .section-head { align-items: flex-start; flex-direction: column; }
+  .plan-summary-grid { grid-template-columns: 1fr; }
+  .plan-summary-item--wide { grid-column: auto; }
   .kpi { padding: 12px; }
   .kpi-value { font-size: 18px; }
 

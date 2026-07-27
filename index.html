@@ -21,7 +21,6 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" role="complementary" aria-label="Painel de controle">
 
-```
   <div class="brand">
     <div class="brand-icon" aria-hidden="true"></div>
     <div class="brand-text">
@@ -181,9 +180,9 @@
 
 
   <!-- INVESTMENT PLAN CHAT -->
-  <div class="sidebar-section plan-chat" aria-label="Chat do plano de investimento">
-    <div class="section-title">Chat do plano de investimento</div>
-    <p class="sidebar-hint">Edite os campos abaixo: cada input atualiza o dashboard e salva o plano em <code>financialPlan/config</code>.</p>
+  <div class="sidebar-section plan-chat" aria-label="Plano de Investimento Patrimonial">
+    <div class="section-title">Plano de Investimento Patrimonial</div>
+    <p class="sidebar-hint">Edite os campos abaixo: cada input aparece no dashboard e salva o plano em <code>financialPlan/config</code>.</p>
 
     <label class="field">
       <span class="field-label">Renda mensal prevista</span>
@@ -340,6 +339,39 @@
         <div class="kpi-orb" aria-hidden="true"></div>
       </article>
     </div>
+
+    <article class="card plan-summary" aria-label="Dados do Plano de Investimento Patrimonial">
+      <div class="card-head">
+        <h3 class="card-title">Dados inputados no Plano de Investimento Patrimonial</h3>
+        <span class="chip chip--blue">Sincronizado</span>
+      </div>
+      <div class="plan-summary-grid">
+        <div class="plan-summary-item">
+          <span>Renda mensal prevista</span>
+          <strong id="planSummaryExpectedIncome">R$ 0</strong>
+        </div>
+        <div class="plan-summary-item">
+          <span>Despesas previstas</span>
+          <strong id="planSummaryExpectedExpenses">R$ 0</strong>
+        </div>
+        <div class="plan-summary-item">
+          <span>Meta de patrimônio</span>
+          <strong id="planSummaryNetWorthGoal">R$ 0</strong>
+        </div>
+        <div class="plan-summary-item">
+          <span>Reserva desejada</span>
+          <strong id="planSummaryDesiredReserve">R$ 0</strong>
+        </div>
+        <div class="plan-summary-item">
+          <span>Prazo da meta</span>
+          <strong id="planSummaryGoalDeadline">Não informado</strong>
+        </div>
+        <div class="plan-summary-item plan-summary-item--wide">
+          <span>Premissas / mensagem do chat</span>
+          <strong id="planSummaryReturnAssumptions">Sem premissas informadas</strong>
+        </div>
+      </div>
+    </article>
   </section>
 
 
@@ -426,7 +458,6 @@
   </section>
 
 </main>
-```
 
   </div>
 
@@ -439,7 +470,6 @@
         <button class="icon-btn" id="closeModal" type="button" aria-label="Fechar">✕</button>
       </div>
 
-```
   <label class="field">
     <span class="field-label">Descrição</span>
     <input type="text" id="editDescricao" autocomplete="off">
@@ -454,7 +484,6 @@
     Salvar alterações
   </button>
 </div>
-```
 
   </div>
 

@@ -149,6 +149,12 @@ const financialIndependenceProgressEl = document.getElementById("financialIndepe
 const financialIndependenceSubEl = document.getElementById("financialIndependenceSub");
 const financialIndependenceBarEl = document.getElementById("financialIndependenceBar");
 const wealthEmptyStateEl = document.getElementById("wealthEmptyState");
+const planSummaryExpectedIncomeEl = document.getElementById("planSummaryExpectedIncome");
+const planSummaryExpectedExpensesEl = document.getElementById("planSummaryExpectedExpenses");
+const planSummaryNetWorthGoalEl = document.getElementById("planSummaryNetWorthGoal");
+const planSummaryDesiredReserveEl = document.getElementById("planSummaryDesiredReserve");
+const planSummaryGoalDeadlineEl = document.getElementById("planSummaryGoalDeadline");
+const planSummaryReturnAssumptionsEl = document.getElementById("planSummaryReturnAssumptions");
 
 const modalEl         = document.getElementById("modal");
 const editDescricaoEl = document.getElementById("editDescricao");
@@ -631,6 +637,19 @@ function getAverageMonthlyExpenses(rows) {
   return months.size ? expenses / months.size : 0;
 }
 
+
+function renderPlanSummary(planConfig = currentPlanConfig) {
+  const deadline = toDateMaybe(planConfig?.goalDeadline) || clampDate(planConfig?.goalDeadline);
+  const assumptions = String(planConfig?.returnAssumptions || "").trim();
+
+  if (planSummaryExpectedIncomeEl) planSummaryExpectedIncomeEl.textContent = brl(planConfig?.expectedMonthlyIncome || 0);
+  if (planSummaryExpectedExpensesEl) planSummaryExpectedExpensesEl.textContent = brl(planConfig?.expectedExpenses || 0);
+  if (planSummaryNetWorthGoalEl) planSummaryNetWorthGoalEl.textContent = brl(planConfig?.netWorthGoal || 0);
+  if (planSummaryDesiredReserveEl) planSummaryDesiredReserveEl.textContent = brl(planConfig?.desiredEmergencyReserve || 0);
+  if (planSummaryGoalDeadlineEl) planSummaryGoalDeadlineEl.textContent = deadline ? deadline.toLocaleDateString("pt-BR") : "Não informado";
+  if (planSummaryReturnAssumptionsEl) planSummaryReturnAssumptionsEl.textContent = assumptions || "Sem premissas informadas";
+}
+
 function renderWealthPlanning(rows, planConfig = currentPlanConfig) {
   const hasRows = rows.length > 0;
   const netWorth = calculateNetWorth(rows);
@@ -657,6 +676,7 @@ function renderWealthPlanning(rows, planConfig = currentPlanConfig) {
   if (financialIndependenceProgressEl) financialIndependenceProgressEl.textContent = pct(progress);
   if (financialIndependenceSubEl) financialIndependenceSubEl.textContent = goal > 0 ? `${brl(Math.max(goal - netWorth, 0))} restantes` : "Defina a meta de patrimônio";
   if (financialIndependenceBarEl) financialIndependenceBarEl.style.width = `${progress * 100}%`;
+  renderPlanSummary(planConfig);
 }
 
 function renderPlanningCharts(rows, planConfig = currentPlanConfig) {
